@@ -63,7 +63,6 @@ void main() {
       });
 
       test('should throw BadRequestException if item with ID already exists',
-
           () async {
         await client.create(item1); // Create first time
         // Attempt to create again with the same ID
