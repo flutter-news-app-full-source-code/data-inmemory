@@ -1,5 +1,5 @@
 name: ht_data_inmemory
-description: ....
+description: An in-memory implementation of the HtDataClient interface for testing or local development.
 repository: https://github.com/headlines-toolkit/ht-data-inmemory
 publish_to: none
 
@@ -10,10 +10,9 @@ dependencies:
   ht_data_client:
     git:
       url: https://github.com/headlines-toolkit/ht-data-client.git
-  ht_http_client:
+  ht_http_client: # Added for its exceptions
     git:
       url: https://github.com/headlines-toolkit/ht-http-client.git
-  uuid: ^4.4.0 # Added for potential ID generation (though current plan avoids it)
 
 dev_dependencies:
   mocktail: ^1.0.4
