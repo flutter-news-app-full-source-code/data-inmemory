@@ -14,6 +14,7 @@ Key characteristics:
 - **In-Memory Storage:** Data is stored locally in Dart `Map` objects. Data is lost when the client instance is destroyed.
 - **Dependency on `ht_data_client`:** Implements the standard data client interface.
 - **Requires ID and JSON Logic:** You must provide functions to extract a unique ID (`getId`) and serialize items to JSON (`toJson`) during instantiation. The client does *not* generate IDs itself.
+- **Optional Initial Data:** You can optionally provide a `List<T>` via the `initialData` constructor parameter to pre-populate the client. Throws `ArgumentError` if duplicate IDs are found in the initial data.
 - **Simple Querying:** The `readAllByQuery` method performs basic key-value matching on the JSON representation of items. It does not support complex queries (ranges, advanced sorting, etc.).
 - **Error Simulation:** Throws exceptions like `NotFoundException` and `BadRequestException` (from `package:ht_http_client`) to simulate common API errors.
 - **Pagination:** Supports basic pagination via `startAfterId` and `limit` parameters on `readAll` and `readAllByQuery`.
@@ -88,10 +89,15 @@ class MyModel {
 }
 
 void main() async {
-  // Instantiate the client
+  // Instantiate the client (empty)
   final client = HtDataInMemoryClient<MyModel>(
     toJson: (item) => item.toJson(),
     getId: (item) => item.id,
+    // Optionally provide initial data:
+    // initialData: [
+    //   MyModel(id: 'pre1', name: 'Preloaded 1', value: 10),
+    //   MyModel(id: 'pre2', name: 'Preloaded 2', value: 20),
+    // ],
   );
 
   // Create an item
