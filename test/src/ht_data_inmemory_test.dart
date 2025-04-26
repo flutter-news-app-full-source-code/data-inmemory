@@ -63,6 +63,7 @@ void main() {
       });
 
       test('should throw BadRequestException if item with ID already exists',
+
           () async {
         await client.create(item1); // Create first time
         // Attempt to create again with the same ID
@@ -295,6 +296,60 @@ void main() {
         expect(
           () => client.delete('non_existent_id'),
           throwsA(isA<NotFoundException>()),
+        );
+      });
+    });
+
+    group('constructor', () {
+      test('should initialize with empty storage if initialData is null',
+          () async {
+        // client is already initialized with null initialData in root setUp
+        expect(await client.readAll(), isEmpty);
+      });
+
+      test('should initialize with empty storage if initialData is empty list',
+          () async {
+        client = HtDataInMemoryClient<_TestModel>(
+          toJson: _testModelToJson,
+          getId: _getTestModelId,
+          initialData: [],
+        );
+        expect(await client.readAll(), isEmpty);
+      });
+
+      test('should initialize with items from initialData', () async {
+        final initialItems = [item1, item2];
+        client = HtDataInMemoryClient<_TestModel>(
+          toJson: _testModelToJson,
+          getId: _getTestModelId,
+          initialData: initialItems,
+        );
+
+        // Verify items can be read back
+        expect(await client.read(item1.id), equals(item1));
+        expect(await client.read(item2.id), equals(item2));
+
+        // Verify readAll returns the initial items
+        final allItems = await client.readAll();
+        expect(allItems, hasLength(2));
+        expect(allItems, containsAll(initialItems));
+      });
+
+      test('should throw ArgumentError if initialData contains duplicate IDs',
+          () {
+        final initialItemsWithDuplicate = [
+          item1,
+          item2,
+          _TestModel(id: item1.id, value: 'duplicate_value'), // Duplicate ID
+        ];
+
+        expect(
+          () => HtDataInMemoryClient<_TestModel>(
+            toJson: _testModelToJson,
+            getId: _getTestModelId,
+            initialData: initialItemsWithDuplicate,
+          ),
+          throwsA(isA<ArgumentError>()),
         );
       });
     });
