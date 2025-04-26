@@ -10,6 +10,10 @@ dependencies:
   ht_data_client:
     git:
       url: https://github.com/headlines-toolkit/ht-data-client.git
+  ht_http_client:
+    git:
+      url: https://github.com/headlines-toolkit/ht-http-client.git
+  uuid: ^4.4.0 # Added for potential ID generation (though current plan avoids it)
 
 dev_dependencies:
   mocktail: ^1.0.4
