@@ -1,4 +1,4 @@
-name: ht_data_api
+name: ht_data_inmemory
 description: ....
 repository: https://github.com/headlines-toolkit/ht-data-inmemory
 publish_to: none

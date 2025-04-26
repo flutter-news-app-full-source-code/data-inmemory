@@ -1,3 +1,6 @@
+//
+// ignore_for_file: unused_shown_name, lines_longer_than_80_chars, avoid_print
+
 import 'dart:async';
 import 'dart:math';
 
@@ -88,7 +91,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
 
-    var items = _storage.values.toList(); // Get all items
+    final items = _storage.values.toList(); // Get all items
 
     return _paginate(items, startAfterId, limit);
   }
@@ -107,9 +110,9 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
       return readAll(startAfterId: startAfterId, limit: limit);
     }
 
-    final List<T> matchedItems = [];
+    final matchedItems = <T>[];
     _jsonStorage.forEach((id, jsonItem) {
-      bool match = true;
+      var match = true;
       query.forEach((key, value) {
         // Check if the key exists and the value matches
         if (!jsonItem.containsKey(key) || jsonItem[key] != value) {
@@ -127,8 +130,9 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
           // This case should ideally not happen if create/update/delete
           // maintain consistency. Log or handle as an internal error if needed.
           print(
-              'Warning: Inconsistency detected. JSON found for ID "$id" '
-              'but original item is missing in _storage.',);
+            'Warning: Inconsistency detected. JSON found for ID "$id" '
+            'but original item is missing in _storage.',
+          );
         }
       }
     });
