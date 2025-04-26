@@ -46,11 +46,28 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
   /// - [toJson]: A function to convert an item of type [T] to a JSON map.
   ///             Used for storing data for querying.
   /// - [getId]: A function to extract the unique string ID from an item of type [T].
+  /// - [initialData]: An optional list of items to populate the client with initially.
+  ///                  Throws [ArgumentError] if duplicate IDs are found in the
+  ///                  initial data.
   HtDataInMemoryClient({
     required ToJson<T> toJson,
     required String Function(T item) getId,
+    List<T>? initialData,
   })  : _toJson = toJson,
-        _getId = getId;
+        _getId = getId {
+    if (initialData != null) {
+      for (final item in initialData) {
+        final id = _getId(item);
+        if (_storage.containsKey(id)) {
+          throw ArgumentError(
+            'Duplicate ID "$id" found in initialData.',
+          );
+        }
+        _storage[id] = item;
+        _jsonStorage[id] = _toJson(item);
+      }
+    }
+  }
 
   final ToJson<T> _toJson;
   final String Function(T item) _getId;
