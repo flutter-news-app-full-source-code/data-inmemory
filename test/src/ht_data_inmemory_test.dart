@@ -55,11 +55,12 @@ void main() {
     });
 
     group('create', () {
-      test('should create and return the item', () async {
-        final createdItem = await client.create(item1);
-        expect(createdItem, equals(item1));
+      test('should create and return the item in SuccessApiResponse', () async {
+        final createdResponse = await client.create(item1);
+        expect(createdResponse.data, equals(item1));
         // Verify it can be read back
-        expect(await client.read(item1.id), equals(item1));
+        final readResponse = await client.read(item1.id);
+        expect(readResponse.data, equals(item1));
       });
 
       test('should throw BadRequestException if item with ID already exists',
@@ -80,9 +81,12 @@ void main() {
         await client.create(item2);
       });
 
-      test('should return the item if ID exists', () async {
-        expect(await client.read(item1.id), equals(item1));
-        expect(await client.read(item2.id), equals(item2));
+      test('should return the item in SuccessApiResponse if ID exists',
+          () async {
+        final response1 = await client.read(item1.id);
+        expect(response1.data, equals(item1));
+        final response2 = await client.read(item2.id);
+        expect(response2.data, equals(item2));
       });
 
       test('should throw NotFoundException if ID does not exist', () async {
@@ -94,74 +98,98 @@ void main() {
     });
 
     group('readAll', () {
-      test('should return empty list when client is empty', () async {
-        expect(await client.readAll(), isEmpty);
+      test('should return empty PaginatedResponse when client is empty',
+          () async {
+        final response = await client.readAll();
+        expect(response.data.items, isEmpty);
+        expect(response.data.cursor, isNull);
+        expect(response.data.hasMore, isFalse);
       });
 
-      test('should return all items when client has data', () async {
-        await client.create(item1);
-        await client.create(item2);
-        await client.create(item3);
-        final result = await client.readAll();
-        expect(result, hasLength(3));
-        expect(result, containsAll([item1, item2, item3]));
-      });
-
-      test('should return items with limit', () async {
-        await client.create(item1);
-        await client.create(item2);
-        await client.create(item3);
-        final result = await client.readAll(limit: 2);
-        expect(result, hasLength(2));
-        // Order isn't guaranteed by Map.values, so check if it's any valid combo
-        expect(
-          result,
-          anyOf([
-            containsAll([item1, item2]),
-            containsAll([item1, item3]),
-            containsAll([item2, item3]),
-          ]),
-        );
-      });
-
-      test('should return items after startAfterId', () async {
-        await client.create(item1);
-        await client.create(item2);
-        await client.create(item3);
-        // Need to know the internal order to test reliably, let's read all first
-        final allItems = await client.readAll();
-        final firstItemId = allItems[0].id;
-        final result = await client.readAll(startAfterId: firstItemId);
-        expect(result, hasLength(allItems.length - 1));
-        expect(result, isNot(contains(allItems[0])));
-      });
-
-      test('should return items after startAfterId with limit', () async {
-        await client.create(item1);
-        await client.create(item2);
-        await client.create(item3);
-        final allItems = await client.readAll(); // Get items to know order
-        final firstItemId = allItems[0].id;
-        final result =
-            await client.readAll(startAfterId: firstItemId, limit: 1);
-        expect(result, hasLength(1));
-        expect(result.first, equals(allItems[1])); // Expect the second item
-      });
-
-      test('should return empty list if startAfterId does not exist', () async {
-        await client.create(item1);
-        final result = await client.readAll(startAfterId: 'non_existent_id');
-        expect(result, isEmpty);
-      });
-
-      test('should return empty list if startAfterId is the last item',
+      test('should return all items in PaginatedResponse when client has data',
           () async {
         await client.create(item1);
         await client.create(item2);
-        final allItems = await client.readAll();
-        final lastItemId = allItems.last.id;
-        final result = await client.readAll(startAfterId: lastItemId);
-        expect(result, isEmpty);
+        await client.create(item3);
+        final response = await client.readAll();
+        expect(response.data.items, hasLength(3));
+        expect(response.data.items, containsAll([item1, item2, item3]));
+        expect(response.data.hasMore, isFalse); // No limit, so no more pages
+        expect(response.data.cursor, isNull); // No more pages
+      });
+
+      test('should return limited items and indicate hasMore', () async {
+        // Create items in a predictable order for pagination testing
+        final items =
+            List.generate(5, (i) => _TestModel(id: 'id$i', value: 'v$i'));
+        for (final item in items) {
+          await client.create(item);
+        }
+
+        final response = await client.readAll(limit: 2);
+        expect(response.data.items, hasLength(2));
+        expect(response.data.items, containsAll([items[0], items[1]]));
+        expect(response.data.hasMore, isTrue);
+        expect(response.data.cursor,
+            equals(items[1].id)); // Cursor is last item's ID
+      });
+
+      test('should return items after startAfterId', () async {
+        final items =
+            List.generate(5, (i) => _TestModel(id: 'id$i', value: 'v$i'));
+        for (final item in items) {
+          await client.create(item);
+        }
+        final startAfter = items[1].id; // Start after the second item
+
+        final response = await client.readAll(startAfterId: startAfter);
+        expect(response.data.items, hasLength(3)); // Should get items 2, 3, 4
+        expect(
+            response.data.items, containsAll([items[2], items[3], items[4]]));
+        expect(response.data.hasMore, isFalse); // No limit, got all remaining
+        expect(response.data.cursor, isNull);
+      });
+
+      test('should return items after startAfterId with limit', () async {
+        final items =
+            List.generate(5, (i) => _TestModel(id: 'id$i', value: 'v$i'));
+        for (final item in items) {
+          await client.create(item);
+        }
+        final startAfter = items[1].id; // Start after the second item
+
+        final response =
+            await client.readAll(startAfterId: startAfter, limit: 2);
+        expect(response.data.items, hasLength(2)); // Should get items 2, 3
+        expect(response.data.items, containsAll([items[2], items[3]]));
+        expect(response.data.hasMore, isTrue); // Item 4 still exists
+        expect(response.data.cursor,
+            equals(items[3].id)); // Cursor is last item's ID
+      });
+
+      test(
+          'should return empty PaginatedResponse if startAfterId does not exist',
+          () async {
+        await client.create(item1);
+        final response = await client.readAll(startAfterId: 'non_existent_id');
+        expect(response.data.items, isEmpty);
+        expect(response.data.cursor, isNull);
+        expect(response.data.hasMore, isFalse);
+      });
+
+      test(
+          'should return empty PaginatedResponse if startAfterId is the last item',
+          () async {
+        final items =
+            List.generate(3, (i) => _TestModel(id: 'id$i', value: 'v$i'));
+        for (final item in items) {
+          await client.create(item);
+        }
+        final lastItemId = items.last.id;
+        final response = await client.readAll(startAfterId: lastItemId);
+        expect(response.data.items, isEmpty);
+        expect(response.data.cursor, isNull);
+        expect(response.data.hasMore, isFalse);
       });
     });
 
@@ -173,69 +201,89 @@ void main() {
         await client.create(item3); // category: A
       });
 
-      test('should return all items if query is empty', () async {
-        final result = await client.readAllByQuery({});
-        expect(result, hasLength(3));
-        expect(result, containsAll([item1, item2, item3]));
+      test('should return all items in PaginatedResponse if query is empty',
+          () async {
+        final response = await client.readAllByQuery({});
+        expect(response.data.items, hasLength(3));
+        expect(response.data.items, containsAll([item1, item2, item3]));
+        expect(response.data.hasMore, isFalse);
+        expect(response.data.cursor, isNull);
       });
 
-      test('should return items matching a single query parameter', () async {
-        final result = await client.readAllByQuery({'category': 'A'});
-        expect(result, hasLength(2));
-        expect(result, containsAll([item1, item3]));
-        expect(result, isNot(contains(item2)));
+      test('should return matching items in PaginatedResponse', () async {
+        final response = await client.readAllByQuery({'category': 'A'});
+        expect(response.data.items, hasLength(2));
+        expect(response.data.items, containsAll([item1, item3]));
+        expect(response.data.items, isNot(contains(item2)));
+        expect(response.data.hasMore, isFalse);
+        expect(response.data.cursor, isNull);
       });
 
       test('should return items matching multiple query parameters', () async {
-        final result =
+        final response =
             await client.readAllByQuery({'category': 'A', 'value': 'value1'});
-        expect(result, hasLength(1));
-        expect(result, contains(item1));
+        expect(response.data.items, hasLength(1));
+        expect(response.data.items, contains(item1));
+        expect(response.data.hasMore, isFalse);
+        expect(response.data.cursor, isNull);
       });
 
-      test('should return empty list if no items match query', () async {
-        final result = await client.readAllByQuery({'category': 'C'});
-        expect(result, isEmpty);
-      });
-
-      test('should return empty list if query key does not exist in items',
+      test('should return empty PaginatedResponse if no items match query',
           () async {
-        final result =
-            await client.readAllByQuery({'non_existent_key': 'value'});
-        expect(result, isEmpty);
+        final response = await client.readAllByQuery({'category': 'C'});
+        expect(response.data.items, isEmpty);
+        expect(response.data.cursor, isNull);
+        expect(response.data.hasMore, isFalse);
       });
 
-      test('should apply pagination to query results (limit)', () async {
-        final result = await client.readAllByQuery({'category': 'A'}, limit: 1);
-        expect(result, hasLength(1));
-        // Check if it's either item1 or item3
-        expect(result.first == item1 || result.first == item3, isTrue);
+      test(
+          'should return empty PaginatedResponse if query key does not exist in items',
+          () async {
+        final response =
+            await client.readAllByQuery({'non_existent_key': 'value'});
+        expect(response.data.items, isEmpty);
+        expect(response.data.cursor, isNull);
+        expect(response.data.hasMore, isFalse);
       });
 
       test('should apply pagination to query results (startAfterId)', () async {
-        // Get the items matching the query first to know the order
-        final matchingItems = await client.readAllByQuery({'category': 'A'});
-        final firstMatchingId = matchingItems[0].id;
-        final result = await client
-            .readAllByQuery({'category': 'A'}, startAfterId: firstMatchingId);
-        expect(result, hasLength(1));
-        expect(
-          result.first,
-          equals(matchingItems[1]),
-        ); // Should be the second match
+        // Ensure predictable order for this test
+        client = HtDataInMemoryClient<_TestModel>(
+          toJson: _testModelToJson,
+          getId: _getTestModelId,
+          initialData: [item1, item3, item2], // item1, item3 are category 'A'
+        );
+        final startAfter = item1.id;
+        final response = await client
+            .readAllByQuery({'category': 'A'}, startAfterId: startAfter);
+        expect(response.data.items, hasLength(1));
+        expect(response.data.items.first,
+            equals(item3)); // Should be the second 'A'
+        expect(response.data.hasMore, isFalse);
+        expect(response.data.cursor, isNull);
       });
 
       test('should apply pagination to query results (startAfterId + limit)',
           () async {
-        final matchingItems = await client.readAllByQuery({'category': 'A'});
-        final firstMatchingId = matchingItems[0].id;
-        // Limit is 0, should return empty
-        final result = await client.readAllByQuery(
-          {'category': 'A'},
-          startAfterId: firstMatchingId,
-          limit: 0,
+        // Ensure predictable order
+        const itemA1 = _TestModel(id: 'a1', value: 'v1', category: 'A');
+        const itemA2 = _TestModel(id: 'a2', value: 'v2', category: 'A');
+        const itemA3 = _TestModel(id: 'a3', value: 'v3', category: 'A');
+        client = HtDataInMemoryClient<_TestModel>(
+          toJson: _testModelToJson,
+          getId: _getTestModelId,
+          initialData: [itemA1, itemA2, itemA3],
         );
-        expect(result, isEmpty);
+        final startAfter = itemA1.id;
+        final response = await client.readAllByQuery(
+          {'category': 'A'},
+          startAfterId: startAfter,
+          limit: 1,
+        );
+        expect(response.data.items, hasLength(1));
+        expect(response.data.items.first, equals(itemA2));
+        expect(response.data.hasMore, isTrue); // itemA3 remains
+        expect(response.data.cursor, equals(itemA2.id));
       });
     });
 
@@ -245,12 +293,14 @@ void main() {
         await client.create(item1);
       });
 
-      test('should update and return the item if ID exists', () async {
+      test('should update and return item in SuccessApiResponse if ID exists',
+          () async {
         const updatedItem = _TestModel(id: 'id1', value: 'updated_value');
-        final result = await client.update(item1.id, updatedItem);
-        expect(result, equals(updatedItem));
+        final updateResponse = await client.update(item1.id, updatedItem);
+        expect(updateResponse.data, equals(updatedItem));
         // Verify the stored item is updated
-        expect(await client.read(item1.id), equals(updatedItem));
+        final readResponse = await client.read(item1.id);
+        expect(readResponse.data, equals(updatedItem));
       });
 
       test('should throw NotFoundException if ID does not exist', () async {
@@ -287,8 +337,10 @@ void main() {
           throwsA(isA<NotFoundException>()),
         );
         // Verify other items remain
-        expect(await client.read(item2.id), equals(item2));
-        expect(await client.readAll(), hasLength(1));
+        final readResponse = await client.read(item2.id);
+        expect(readResponse.data, equals(item2));
+        final allResponse = await client.readAll();
+        expect(allResponse.data.items, hasLength(1));
       });
 
       test('should throw NotFoundException if ID does not exist', () async {
@@ -300,20 +352,21 @@ void main() {
     });
 
     group('constructor', () {
-      test('should initialize with empty storage if initialData is null',
+      test(
+          'should initialize with empty storage if initialData is null or empty',
           () async {
-        // client is already initialized with null initialData in root setUp
-        expect(await client.readAll(), isEmpty);
-      });
+        // Test case 1: initialData is null (from root setUp)
+        final response1 = await client.readAll();
+        expect(response1.data.items, isEmpty);
 
-      test('should initialize with empty storage if initialData is empty list',
-          () async {
+        // Test case 2: initialData is empty list
         client = HtDataInMemoryClient<_TestModel>(
           toJson: _testModelToJson,
           getId: _getTestModelId,
           initialData: [],
         );
-        expect(await client.readAll(), isEmpty);
+        final response2 = await client.readAll();
+        expect(response2.data.items, isEmpty);
       });
 
       test('should initialize with items from initialData', () async {
@@ -325,13 +378,15 @@ void main() {
         );
 
         // Verify items can be read back
-        expect(await client.read(item1.id), equals(item1));
-        expect(await client.read(item2.id), equals(item2));
+        final readResponse1 = await client.read(item1.id);
+        expect(readResponse1.data, equals(item1));
+        final readResponse2 = await client.read(item2.id);
+        expect(readResponse2.data, equals(item2));
 
         // Verify readAll returns the initial items
-        final allItems = await client.readAll();
-        expect(allItems, hasLength(2));
-        expect(allItems, containsAll(initialItems));
+        final allResponse = await client.readAll();
+        expect(allResponse.data.items, hasLength(2));
+        expect(allResponse.data.items, containsAll(initialItems));
       });
 
       test('should throw ArgumentError if initialData contains duplicate IDs',
