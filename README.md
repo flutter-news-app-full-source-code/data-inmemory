@@ -49,18 +49,19 @@ Then run `dart pub get` or `flutter pub get`.
 ## Features
 
 Implements the `HtDataClient<T>` interface, providing the following methods:
-- `create(T item)`: Adds an item to the in-memory store. Throws `BadRequestException` if ID already exists.
-- `read(String id)`: Retrieves an item by its ID. Throws `NotFoundException` if the ID doesn't exist.
-- `readAll({String? startAfterId, int? limit})`: Retrieves all items, with optional pagination.
-- `readAllByQuery(Map<String, dynamic> query, {String? startAfterId, int? limit})`: Retrieves items matching a simple key-value query, with optional pagination.
-- `update(String id, T item)`: Updates an existing item. Throws `NotFoundException` if the ID doesn't exist or `BadRequestException` if the item's ID doesn't match the path ID.
-- `delete(String id)`: Removes an item by its ID. Throws `NotFoundException` if the ID doesn't exist.
+- `create(T item)`: Adds an item. Returns `Future<SuccessApiResponse<T>>`. Throws `BadRequestException` if ID already exists.
+- `read(String id)`: Retrieves an item. Returns `Future<SuccessApiResponse<T>>`. Throws `NotFoundException` if ID doesn't exist.
+- `readAll({String? startAfterId, int? limit})`: Retrieves items. Returns `Future<SuccessApiResponse<PaginatedResponse<T>>>`. Supports pagination.
+- `readAllByQuery(Map<String, dynamic> query, {String? startAfterId, int? limit})`: Retrieves items matching a query. Returns `Future<SuccessApiResponse<PaginatedResponse<T>>>`. Supports pagination.
+- `update(String id, T item)`: Updates an item. Returns `Future<SuccessApiResponse<T>>`. Throws `NotFoundException` or `BadRequestException`.
+- `delete(String id)`: Removes an item. Returns `Future<void>`. Throws `NotFoundException`.
 
 ## Usage
 
 ```dart
 import 'package:ht_data_inmemory/ht_data_inmemory.dart';
 import 'package:ht_http_client/ht_http_client.dart' show NotFoundException; // For catching errors
+import 'package:ht_shared/ht_shared.dart'; // For SuccessApiResponse, PaginatedResponse
 
 // Define your data model
 class MyModel {
@@ -107,24 +108,32 @@ void main() async {
 
   // Read the item
   try {
-    final readItem = await client.read('1');
+    final readResponse = await client.read('1');
+    final readItem = readResponse.data; // Access data from SuccessApiResponse
     print('Read item: ${readItem.name}');
   } on NotFoundException catch (e) {
     print('Error reading item: ${e.message}');
   }
 
-  // Read all items
-  final allItems = await client.readAll();
+  // Read all items (paginated)
+  final allItemsResponse = await client.readAll();
+  final allItems = allItemsResponse.data.items; // Access items list
+  final hasMore = allItemsResponse.data.hasMore;
+  final cursor = allItemsResponse.data.cursor;
   print('All items count: ${allItems.length}');
+  print('Has more items: $hasMore');
+  print('Next page cursor: $cursor');
 
-  // Query items
+  // Query items (paginated)
   final query = {'value': 100};
-  final queriedItems = await client.readAllByQuery(query);
+  final queriedResponse = await client.readAllByQuery(query);
+  final queriedItems = queriedResponse.data.items; // Access items list
   print('Queried items count (value=100): ${queriedItems.length}');
 
   // Update the item
   final updatedItemData = MyModel(id: '1', name: 'Updated Test Item', value: 150);
-  final updatedItem = await client.update('1', updatedItemData);
+  final updateResponse = await client.update('1', updatedItemData);
+  final updatedItem = updateResponse.data; // Access data from SuccessApiResponse
   print('Updated item name: ${updatedItem.name}');
 
   // Delete the item
