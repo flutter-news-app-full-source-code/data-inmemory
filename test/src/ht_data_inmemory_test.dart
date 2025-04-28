@@ -130,8 +130,10 @@ void main() {
         expect(response.data.items, hasLength(2));
         expect(response.data.items, containsAll([items[0], items[1]]));
         expect(response.data.hasMore, isTrue);
-        expect(response.data.cursor,
-            equals(items[1].id)); // Cursor is last item's ID
+        expect(
+          response.data.cursor,
+          equals(items[1].id),
+        ); // Cursor is last item's ID
       });
 
       test('should return items after startAfterId', () async {
@@ -145,7 +147,9 @@ void main() {
         final response = await client.readAll(startAfterId: startAfter);
         expect(response.data.items, hasLength(3)); // Should get items 2, 3, 4
         expect(
-            response.data.items, containsAll([items[2], items[3], items[4]]));
+          response.data.items,
+          containsAll([items[2], items[3], items[4]]),
+        );
         expect(response.data.hasMore, isFalse); // No limit, got all remaining
         expect(response.data.cursor, isNull);
       });
@@ -163,8 +167,10 @@ void main() {
         expect(response.data.items, hasLength(2)); // Should get items 2, 3
         expect(response.data.items, containsAll([items[2], items[3]]));
         expect(response.data.hasMore, isTrue); // Item 4 still exists
-        expect(response.data.cursor,
-            equals(items[3].id)); // Cursor is last item's ID
+        expect(
+          response.data.cursor,
+          equals(items[3].id),
+        ); // Cursor is last item's ID
       });
 
       test(
@@ -257,8 +263,10 @@ void main() {
         final response = await client
             .readAllByQuery({'category': 'A'}, startAfterId: startAfter);
         expect(response.data.items, hasLength(1));
-        expect(response.data.items.first,
-            equals(item3)); // Should be the second 'A'
+        expect(
+          response.data.items.first,
+          equals(item3),
+        ); // Should be the second 'A'
         expect(response.data.hasMore, isFalse);
         expect(response.data.cursor, isNull);
       });

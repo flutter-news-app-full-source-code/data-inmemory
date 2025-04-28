@@ -33,9 +33,6 @@ dependencies:
   ht_data_client:
     git:
       url: https://github.com/headlines-toolkit/ht-data-client.git
-  ht_http_client:
-    git:
-      url: https://github.com/headlines-toolkit/ht-http-client.git
 
 # Or for development/testing only:
 dev_dependencies:
