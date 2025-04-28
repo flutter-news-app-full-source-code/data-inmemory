@@ -18,6 +18,7 @@ import 'package:ht_http_client/ht_http_client.dart'
         ServerException,
         UnauthorizedException,
         UnknownException;
+import 'package:ht_shared/ht_shared.dart';
 
 /// {@template ht_data_inmemory_client}
 /// An in-memory implementation of [HtDataClient] for testing or local development.
@@ -78,7 +79,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
   final Map<String, Map<String, dynamic>> _jsonStorage = {};
 
   @override
-  Future<T> create(T item) async {
+  Future<SuccessApiResponse<T>> create(T item) async {
     final id = _getId(item);
     if (_storage.containsKey(id)) {
       throw BadRequestException(
@@ -89,32 +90,40 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     _jsonStorage[id] = _toJson(item);
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
-    return item;
+    return SuccessApiResponse(data: item);
   }
 
   @override
-  Future<T> read(String id) async {
+  Future<SuccessApiResponse<T>> read(String id) async {
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
     final item = _storage[id];
     if (item == null) {
       throw NotFoundException('Item with ID "$id" not found.');
     }
-    return item;
+    return SuccessApiResponse(data: item);
   }
 
   @override
-  Future<List<T>> readAll({String? startAfterId, int? limit}) async {
+  Future<SuccessApiResponse<PaginatedResponse<T>>> readAll({
+    String? startAfterId,
+    int? limit,
+  }) async {
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
 
-    final items = _storage.values.toList(); // Get all items
+    final allItems = _storage.values.toList(); // Get all items
 
-    return _paginate(items, startAfterId, limit);
+    final paginatedResponse = _createPaginatedResponse(
+      allItems,
+      startAfterId,
+      limit,
+    );
+    return SuccessApiResponse(data: paginatedResponse);
   }
 
   @override
-  Future<List<T>> readAllByQuery(
+  Future<SuccessApiResponse<PaginatedResponse<T>>> readAllByQuery(
     Map<String, dynamic> query, {
     String? startAfterId,
     int? limit,
@@ -122,43 +131,50 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
 
+    final List<T> matchedItems;
     if (query.isEmpty) {
-      // If query is empty, behave like readAll
-      return readAll(startAfterId: startAfterId, limit: limit);
-    }
+      // If query is empty, use all items
+      matchedItems = _storage.values.toList();
+    } else {
+      // Otherwise, filter based on the query
+      matchedItems = <T>[];
+      _jsonStorage.forEach((id, jsonItem) {
+        var match = true;
+        query.forEach((key, value) {
+          // Check if the key exists and the value matches
+          if (!jsonItem.containsKey(key) || jsonItem[key] != value) {
+            match = false;
+          }
+        });
 
-    final matchedItems = <T>[];
-    _jsonStorage.forEach((id, jsonItem) {
-      var match = true;
-      query.forEach((key, value) {
-        // Check if the key exists and the value matches
-        if (!jsonItem.containsKey(key) || jsonItem[key] != value) {
-          match = false;
+        if (match) {
+          // Retrieve the original item from _storage using the ID
+          // We assume consistency between _storage and _jsonStorage
+          final originalItem = _storage[id];
+          if (originalItem != null) {
+            matchedItems.add(originalItem);
+          } else {
+            // This case should ideally not happen if create/update/delete
+            // maintain consistency. Log or handle as an internal error if needed.
+            print(
+              'Warning: Inconsistency detected. JSON found for ID "$id" '
+              'but original item is missing in _storage.',
+            );
+          }
         }
       });
+    } // End of else block for non-empty query
 
-      if (match) {
-        // Retrieve the original item from _storage using the ID
-        // We assume consistency between _storage and _jsonStorage
-        final originalItem = _storage[id];
-        if (originalItem != null) {
-          matchedItems.add(originalItem);
-        } else {
-          // This case should ideally not happen if create/update/delete
-          // maintain consistency. Log or handle as an internal error if needed.
-          print(
-            'Warning: Inconsistency detected. JSON found for ID "$id" '
-            'but original item is missing in _storage.',
-          );
-        }
-      }
-    });
-
-    return _paginate(matchedItems, startAfterId, limit);
+    final paginatedResponse = _createPaginatedResponse(
+      matchedItems,
+      startAfterId,
+      limit,
+    );
+    return SuccessApiResponse(data: paginatedResponse);
   }
 
   @override
-  Future<T> update(String id, T item) async {
+  Future<SuccessApiResponse<T>> update(String id, T item) async {
     final existingItem = _storage[id];
     if (existingItem == null) {
       throw NotFoundException('Item with ID "$id" not found for update.');
@@ -176,7 +192,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     _jsonStorage[id] = _toJson(item);
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
-    return item;
+    return SuccessApiResponse(data: item);
   }
 
   @override
@@ -190,38 +206,54 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     _jsonStorage.remove(id);
   }
 
-  // Helper function for pagination
-  List<T> _paginate(List<T> items, String? startAfterId, int? limit) {
+  // Helper function to create a PaginatedResponse object
+  PaginatedResponse<T> _createPaginatedResponse(
+    List<T> allMatchingItems,
+    String? startAfterId,
+    int? limit,
+  ) {
     var startIndex = 0;
 
     if (startAfterId != null) {
-      final index = items.indexWhere((item) => _getId(item) == startAfterId);
+      // Find the index of the item *after* which we should start
+      final index = allMatchingItems.indexWhere(
+        (item) => _getId(item) == startAfterId,
+      );
       if (index != -1) {
         startIndex = index + 1; // Start after the found item
       } else {
-        // If startAfterId is provided but not found, return empty list
-        // or handle as an error depending on desired behavior.
-        // Returning empty list is common for pagination.
-        return [];
+        // If startAfterId is provided but not found, return an empty response
+        return const PaginatedResponse(items: [], cursor: null, hasMore: false);
       }
     }
 
     // Ensure startIndex is within bounds
-    if (startIndex >= items.length) {
-      return [];
+    if (startIndex >= allMatchingItems.length) {
+      return const PaginatedResponse(items: [], cursor: null, hasMore: false);
     }
 
-    var endIndex = items.length; // Default to end of list
+    // Determine the actual number of items to take for this page
+    final actualLimit =
+        limit ?? allMatchingItems.length; // Default: take all remaining
+    final count = min(actualLimit, allMatchingItems.length - startIndex);
 
-    if (limit != null && limit >= 0) {
-      endIndex = min(startIndex + limit, items.length);
-    }
+    // Calculate the end index (exclusive)
+    final endIndex = startIndex + count;
 
-    // Ensure endIndex is valid and not before startIndex
-    if (endIndex <= startIndex) {
-      return [];
-    }
+    // Get the items for the current page
+    final pageItems = allMatchingItems.sublist(startIndex, endIndex);
 
-    return items.sublist(startIndex, endIndex);
+    // Determine if there are more items after this page
+    final hasMore = endIndex < allMatchingItems.length;
+
+    // Determine the cursor for the next page (ID of the last item on this page)
+    final cursor =
+        (pageItems.isNotEmpty && hasMore) ? _getId(pageItems.last) : null;
+
+    return PaginatedResponse(
+      items: pageItems,
+      cursor: cursor,
+      hasMore: hasMore,
+    );
   }
 }
