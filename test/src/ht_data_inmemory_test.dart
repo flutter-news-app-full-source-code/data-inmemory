@@ -2,8 +2,7 @@
 // ignore_for_file: avoid_equals_and_hash_code_on_mutable_classes, lines_longer_than_80_chars
 
 import 'package:ht_data_inmemory/src/ht_data_inmemory.dart';
-import 'package:ht_http_client/ht_http_client.dart'
-    show BadRequestException, NotFoundException;
+import 'package:ht_shared/ht_shared.dart';
 import 'package:test/test.dart';
 
 // Simple private model for testing purposes

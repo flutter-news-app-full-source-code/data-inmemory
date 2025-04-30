@@ -10,9 +10,6 @@ dependencies:
   ht_data_client:
     git:
       url: https://github.com/headlines-toolkit/ht-data-client.git
-  ht_http_client: # Added for its exceptions
-    git:
-      url: https://github.com/headlines-toolkit/ht-http-client.git
   ht_shared:
     git:
       url: https://github.com/headlines-toolkit/ht-shared.git

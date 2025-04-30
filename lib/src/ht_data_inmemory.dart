@@ -5,19 +5,6 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:ht_data_client/ht_data_client.dart';
-// Import exceptions from ht_http_client, but hide the client itself if not needed
-// directly, to avoid potential naming conflicts if this package also defined
-// a client named HtHttpClient.
-import 'package:ht_http_client/ht_http_client.dart'
-    show
-        BadRequestException,
-        ForbiddenException,
-        HtHttpException,
-        NetworkException,
-        NotFoundException,
-        ServerException,
-        UnauthorizedException,
-        UnknownException;
 import 'package:ht_shared/ht_shared.dart';
 
 /// {@template ht_data_inmemory_client}
