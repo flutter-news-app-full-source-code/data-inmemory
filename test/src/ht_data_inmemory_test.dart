@@ -1,5 +1,5 @@
 //
-// ignore_for_file: avoid_equals_and_hash_code_on_mutable_classes, lines_longer_than_80_chars
+// ignore_for_file: avoid_equals_and_hash_code_on_mutable_classes
 
 import 'package:ht_data_inmemory/src/ht_data_inmemory.dart';
 import 'package:ht_shared/ht_shared.dart';
@@ -55,19 +55,19 @@ void main() {
 
     group('create', () {
       test('should create and return the item in SuccessApiResponse', () async {
-        final createdResponse = await client.create(item1);
+        final createdResponse = await client.create(item: item1);
         expect(createdResponse.data, equals(item1));
         // Verify it can be read back
-        final readResponse = await client.read(item1.id);
+        final readResponse = await client.read(id: item1.id);
         expect(readResponse.data, equals(item1));
       });
 
       test('should throw BadRequestException if item with ID already exists',
           () async {
-        await client.create(item1); // Create first time
+        await client.create(item: item1); // Create first time
         // Attempt to create again with the same ID
         expect(
-          () => client.create(item1),
+          () => client.create(item: item1),
           throwsA(isA<BadRequestException>()),
         );
       });
@@ -76,21 +76,21 @@ void main() {
     group('read', () {
       setUp(() async {
         // Pre-populate for read tests
-        await client.create(item1);
-        await client.create(item2);
+        await client.create(item: item1);
+        await client.create(item: item2);
       });
 
       test('should return the item in SuccessApiResponse if ID exists',
           () async {
-        final response1 = await client.read(item1.id);
+        final response1 = await client.read(id: item1.id);
         expect(response1.data, equals(item1));
-        final response2 = await client.read(item2.id);
+        final response2 = await client.read(id: item2.id);
         expect(response2.data, equals(item2));
       });
 
       test('should throw NotFoundException if ID does not exist', () async {
         expect(
-          () => client.read('non_existent_id'),
+          () => client.read(id: 'non_existent_id'),
           throwsA(isA<NotFoundException>()),
         );
       });
@@ -107,9 +107,9 @@ void main() {
 
       test('should return all items in PaginatedResponse when client has data',
           () async {
-        await client.create(item1);
-        await client.create(item2);
-        await client.create(item3);
+        await client.create(item: item1);
+        await client.create(item: item2);
+        await client.create(item: item3);
         final response = await client.readAll();
         expect(response.data.items, hasLength(3));
         expect(response.data.items, containsAll([item1, item2, item3]));
@@ -122,7 +122,7 @@ void main() {
         final items =
             List.generate(5, (i) => _TestModel(id: 'id$i', value: 'v$i'));
         for (final item in items) {
-          await client.create(item);
+          await client.create(item: item);
         }
 
         final response = await client.readAll(limit: 2);
@@ -139,7 +139,7 @@ void main() {
         final items =
             List.generate(5, (i) => _TestModel(id: 'id$i', value: 'v$i'));
         for (final item in items) {
-          await client.create(item);
+          await client.create(item: item);
         }
         final startAfter = items[1].id; // Start after the second item
 
@@ -157,7 +157,7 @@ void main() {
         final items =
             List.generate(5, (i) => _TestModel(id: 'id$i', value: 'v$i'));
         for (final item in items) {
-          await client.create(item);
+          await client.create(item: item);
         }
         final startAfter = items[1].id; // Start after the second item
 
@@ -173,9 +173,9 @@ void main() {
       });
 
       test(
-          'should return empty PaginatedResponse if startAfterId does not exist',
-          () async {
-        await client.create(item1);
+          'should return empty PaginatedResponse if startAfterId '
+          'does not exist', () async {
+        await client.create(item: item1);
         final response = await client.readAll(startAfterId: 'non_existent_id');
         expect(response.data.items, isEmpty);
         expect(response.data.cursor, isNull);
@@ -183,12 +183,12 @@ void main() {
       });
 
       test(
-          'should return empty PaginatedResponse if startAfterId is the last item',
-          () async {
+          'should return empty PaginatedResponse if startAfterId is the '
+          'last item', () async {
         final items =
             List.generate(3, (i) => _TestModel(id: 'id$i', value: 'v$i'));
         for (final item in items) {
-          await client.create(item);
+          await client.create(item: item);
         }
         final lastItemId = items.last.id;
         final response = await client.readAll(startAfterId: lastItemId);
@@ -201,9 +201,9 @@ void main() {
     group('readAllByQuery', () {
       setUp(() async {
         // Pre-populate for query tests
-        await client.create(item1); // category: A
-        await client.create(item2); // category: B
-        await client.create(item3); // category: A
+        await client.create(item: item1); // category: A
+        await client.create(item: item2); // category: B
+        await client.create(item: item3); // category: A
       });
 
       test('should return all items in PaginatedResponse if query is empty',
@@ -242,8 +242,8 @@ void main() {
       });
 
       test(
-          'should return empty PaginatedResponse if query key does not exist in items',
-          () async {
+          'should return empty PaginatedResponse if query key does not exist '
+          'in items', () async {
         final response =
             await client.readAllByQuery({'non_existent_key': 'value'});
         expect(response.data.items, isEmpty);
@@ -297,23 +297,24 @@ void main() {
     group('update', () {
       setUp(() async {
         // Pre-populate for update tests
-        await client.create(item1);
+        await client.create(item: item1);
       });
 
       test('should update and return item in SuccessApiResponse if ID exists',
           () async {
         const updatedItem = _TestModel(id: 'id1', value: 'updated_value');
-        final updateResponse = await client.update(item1.id, updatedItem);
+        final updateResponse =
+            await client.update(id: item1.id, item: updatedItem);
         expect(updateResponse.data, equals(updatedItem));
         // Verify the stored item is updated
-        final readResponse = await client.read(item1.id);
+        final readResponse = await client.read(id: item1.id);
         expect(readResponse.data, equals(updatedItem));
       });
 
       test('should throw NotFoundException if ID does not exist', () async {
         const itemToUpdate = _TestModel(id: 'non_existent_id', value: 'value');
         expect(
-          () => client.update('non_existent_id', itemToUpdate),
+          () => client.update(id: 'non_existent_id', item: itemToUpdate),
           throwsA(isA<NotFoundException>()),
         );
       });
@@ -323,7 +324,7 @@ void main() {
         // ID in path is item1.id ('id1'), but item has 'id_mismatch'
         const mismatchedItem = _TestModel(id: 'id_mismatch', value: 'value');
         expect(
-          () => client.update(item1.id, mismatchedItem),
+          () => client.update(id: item1.id, item: mismatchedItem),
           throwsA(isA<BadRequestException>()),
         );
       });
@@ -332,19 +333,19 @@ void main() {
     group('delete', () {
       setUp(() async {
         // Pre-populate for delete tests
-        await client.create(item1);
-        await client.create(item2);
+        await client.create(item: item1);
+        await client.create(item: item2);
       });
 
       test('should delete the item if ID exists', () async {
-        await client.delete(item1.id);
+        await client.delete(id: item1.id);
         // Verify it's gone
         expect(
-          () => client.read(item1.id),
+          () => client.read(id: item1.id),
           throwsA(isA<NotFoundException>()),
         );
         // Verify other items remain
-        final readResponse = await client.read(item2.id);
+        final readResponse = await client.read(id: item2.id);
         expect(readResponse.data, equals(item2));
         final allResponse = await client.readAll();
         expect(allResponse.data.items, hasLength(1));
@@ -352,7 +353,7 @@ void main() {
 
       test('should throw NotFoundException if ID does not exist', () async {
         expect(
-          () => client.delete('non_existent_id'),
+          () => client.delete(id: 'non_existent_id'),
           throwsA(isA<NotFoundException>()),
         );
       });
@@ -385,9 +386,9 @@ void main() {
         );
 
         // Verify items can be read back
-        final readResponse1 = await client.read(item1.id);
+        final readResponse1 = await client.read(id: item1.id);
         expect(readResponse1.data, equals(item1));
-        final readResponse2 = await client.read(item2.id);
+        final readResponse2 = await client.read(id: item2.id);
         expect(readResponse2.data, equals(item2));
 
         // Verify readAll returns the initial items
@@ -401,7 +402,8 @@ void main() {
         final initialItemsWithDuplicate = [
           item1,
           item2,
-          _TestModel(id: item1.id, value: 'duplicate_value'), // Duplicate ID
+          // Duplicate ID
+          _TestModel(id: item1.id, value: 'duplicate_value'),
         ];
 
         expect(
@@ -411,6 +413,170 @@ void main() {
             initialData: initialItemsWithDuplicate,
           ),
           throwsA(isA<ArgumentError>()),
+        );
+      });
+    });
+
+    group('User Scoping', () {
+      const userId1 = 'user1';
+      const userId2 = 'user2';
+      const user1Item1 =
+          _TestModel(id: 'u1item1', value: 'user1Value1', category: 'U1');
+      const user1Item2 =
+          _TestModel(id: 'u1item2', value: 'user1Value2', category: 'U1');
+      const user2Item1 =
+          _TestModel(id: 'u2item1', value: 'user2Value1', category: 'U2');
+      const globalItem1 =
+          _TestModel(id: 'gitem1', value: 'globalValue1', category: 'G');
+
+      setUp(() async {
+        // Initialize a fresh client for each user scoping test
+        client = HtDataInMemoryClient<_TestModel>(
+          toJson: _testModelToJson,
+          getId: _getTestModelId,
+        );
+
+        // Populate with some data
+        await client.create(item: user1Item1, userId: userId1);
+        await client.create(item: user1Item2, userId: userId1);
+        await client.create(item: user2Item1, userId: userId2);
+        await client.create(item: globalItem1); // Global item (userId: null)
+      });
+
+      test(
+          'create should store items under the correct userId and globally '
+          'if userId is null', () async {
+        // Verify user1Item1 was created for userId1
+        final responseUser1 =
+            await client.read(id: user1Item1.id, userId: userId1);
+        expect(responseUser1.data, equals(user1Item1));
+
+        // Verify user2Item1 was created for userId2
+        final responseUser2 =
+            await client.read(id: user2Item1.id, userId: userId2);
+        expect(responseUser2.data, equals(user2Item1));
+
+        // Verify globalItem1 was created globally
+        final responseGlobal = await client.read(id: globalItem1.id);
+        expect(responseGlobal.data, equals(globalItem1));
+
+        // Verify user1Item1 is not accessible globally or by userId2
+        expect(
+          () => client.read(id: user1Item1.id),
+          throwsA(isA<NotFoundException>()),
+        );
+        expect(
+          () => client.read(id: user1Item1.id, userId: userId2),
+          throwsA(isA<NotFoundException>()),
+        );
+      });
+
+      test('read should retrieve items specific to userId or global', () async {
+        // Already implicitly tested by the create test's verification steps
+        // but can add more specific read assertions if needed.
+        final r1 = await client.read(id: user1Item1.id, userId: userId1);
+        expect(r1.data, user1Item1);
+
+        final r2 = await client.read(id: user2Item1.id, userId: userId2);
+        expect(r2.data, user2Item1);
+
+        final r3 = await client.read(id: globalItem1.id); // Global
+        expect(r3.data, globalItem1);
+      });
+
+      test('readAll should return items scoped to userId or global', () async {
+        // User 1
+        final responseUser1 = await client.readAll(userId: userId1);
+        expect(responseUser1.data.items, hasLength(2));
+        expect(responseUser1.data.items, containsAll([user1Item1, user1Item2]));
+
+        // User 2
+        final responseUser2 = await client.readAll(userId: userId2);
+        expect(responseUser2.data.items, hasLength(1));
+        expect(responseUser2.data.items, contains(user2Item1));
+
+        // Global
+        final responseGlobal = await client.readAll(); // userId is null
+        expect(responseGlobal.data.items, hasLength(1));
+        expect(responseGlobal.data.items, contains(globalItem1));
+      });
+
+      test('readAllByQuery should respect userId scoping', () async {
+        // Query for user1's items
+        final responseUser1 = await client.readAllByQuery(
+          {'category': 'U1'},
+          userId: userId1,
+        );
+        expect(responseUser1.data.items, hasLength(2));
+        expect(responseUser1.data.items, containsAll([user1Item1, user1Item2]));
+
+        // Query for user2's items
+        final responseUser2 = await client.readAllByQuery(
+          {'category': 'U2'},
+          userId: userId2,
+        );
+        expect(responseUser2.data.items, hasLength(1));
+        expect(responseUser2.data.items, contains(user2Item1));
+
+        // Query for global items
+        final responseGlobal = await client.readAllByQuery({'category': 'G'});
+        expect(responseGlobal.data.items, hasLength(1));
+        expect(responseGlobal.data.items, contains(globalItem1));
+
+        // Query for 'U1' globally should be empty
+        final emptyResponse = await client.readAllByQuery({'category': 'U1'});
+        expect(emptyResponse.data.items, isEmpty);
+      });
+
+      test('update should modify items only within the correct scope',
+          () async {
+        const updatedUser1Item =
+            _TestModel(id: 'u1item1', value: 'updatedUser1Value');
+        await client.update(
+          id: user1Item1.id,
+          item: updatedUser1Item,
+          userId: userId1,
+        );
+
+        // Verify update for user1
+        final readUser1 = await client.read(id: user1Item1.id, userId: userId1);
+        expect(readUser1.data.value, equals('updatedUser1Value'));
+
+        // Verify global item with same ID (if it existed) is not affected
+        // (In this setup, globalItem1 has a different ID, so this tests isolation)
+        final readGlobal = await client.read(id: globalItem1.id);
+        expect(readGlobal.data.value, equals('globalValue1'));
+
+        // Attempt to update user1's item via global scope should fail
+        expect(
+          () => client.update(id: user1Item1.id, item: updatedUser1Item),
+          throwsA(isA<NotFoundException>()),
+        );
+      });
+
+      test('delete should remove items only from the correct scope', () async {
+        // Delete user1's item
+        await client.delete(id: user1Item1.id, userId: userId1);
+        expect(
+          () => client.read(id: user1Item1.id, userId: userId1),
+          throwsA(isA<NotFoundException>()),
+        );
+
+        // Verify user1's other item, user2's item, and global item still exist
+        final user1Remaining =
+            await client.read(id: user1Item2.id, userId: userId1);
+        expect(user1Remaining.data, equals(user1Item2));
+
+        final user2Item = await client.read(id: user2Item1.id, userId: userId2);
+        expect(user2Item.data, equals(user2Item1));
+
+        final globalItem = await client.read(id: globalItem1.id);
+        expect(globalItem.data, equals(globalItem1));
+
+        // Attempt to delete global item using a userId should fail
+        expect(
+          () => client.delete(id: globalItem1.id, userId: userId1),
+          throwsA(isA<NotFoundException>()),
         );
       });
     });
