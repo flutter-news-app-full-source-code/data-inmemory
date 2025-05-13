@@ -12,7 +12,7 @@ import 'package:ht_shared/ht_shared.dart';
 ///
 /// This client simulates the behavior of a remote data source by storing data
 /// of type [T] in memory. It supports standard CRUD operations, basic querying,
-/// and pagination.
+/// and pagination, including user-scoped and global data.
 ///
 /// **Important:**
 /// - **ID Management:** This client relies on the provided `getId` function
@@ -24,8 +24,11 @@ import 'package:ht_shared/ht_shared.dart';
 ///   (like range queries, sorting beyond natural order, etc.).
 /// - **Error Simulation:** Throws exceptions like [NotFoundException] and
 ///   [BadRequestException] to mimic potential API errors, using types defined
-///   in `package:ht_http_client`. It does not simulate network or auth errors
+///   in `package:ht_shared`. It does not simulate network or auth errors
 ///   unless explicitly added.
+/// - **User Scoping:** Data is stored and accessed based on the provided
+///   `userId`. A special key (`_globalDataKey`) is used for data where
+///   `userId` is `null`.
 /// {@endtemplate}
 class HtDataInMemoryClient<T> implements HtDataClient<T> {
   /// {@macro ht_data_inmemory_client}
@@ -35,6 +38,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
   ///             Used for storing data for querying.
   /// - [getId]: A function to extract the unique string ID from an item of type [T].
   /// - [initialData]: An optional list of items to populate the client with initially.
+  ///                  These items are treated as global data (userId = null).
   ///                  Throws [ArgumentError] if duplicate IDs are found in the
   ///                  initial data.
   HtDataInMemoryClient({
@@ -46,13 +50,20 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     if (initialData != null) {
       for (final item in initialData) {
         final id = _getId(item);
-        if (_storage.containsKey(id)) {
+        if (_userScopedStorage[_globalDataKey]?.containsKey(id) ?? false) {
           throw ArgumentError(
             'Duplicate ID "$id" found in initialData.',
           );
         }
-        _storage[id] = item;
-        _jsonStorage[id] = _toJson(item);
+        // Store initial data as global data
+        _userScopedStorage.putIfAbsent(
+          _globalDataKey,
+          () => <String, T>{},
+        )[id] = item;
+        _userScopedJsonStorage.putIfAbsent(
+          _globalDataKey,
+          () => <String, Map<String, dynamic>>{},
+        )[id] = _toJson(item);
       }
     }
   }
@@ -60,46 +71,82 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
   final ToJson<T> _toJson;
   final String Function(T item) _getId;
 
-  // In-memory storage for the actual items.
-  final Map<String, T> _storage = {};
-  // Parallel storage for the JSON representation, used for querying.
-  final Map<String, Map<String, dynamic>> _jsonStorage = {};
+  // Key used for storing global data (when userId is null).
+  static const String _globalDataKey = '__global__';
+
+  // In-memory storage for the actual items, nested by userId.
+  // Outer map key: userId (or _globalDataKey for null userId)
+  // Inner map key: item ID
+  final Map<String, Map<String, T>> _userScopedStorage = {};
+  // Parallel storage for the JSON representation, nested by userId, used for querying.
+  final Map<String, Map<String, dynamic>> _userScopedJsonStorage = {};
+
+  // Helper to get the storage map for a given userId.
+  Map<String, T> _getStorageForUser(String? userId) {
+    final key = userId ?? _globalDataKey;
+    return _userScopedStorage.putIfAbsent(key, () => <String, T>{});
+  }
+
+  // Helper to get the JSON storage map for a given userId.
+  Map<String, dynamic> _getJsonStorageForUser(String? userId) {
+    final key = userId ?? _globalDataKey;
+    return _userScopedJsonStorage.putIfAbsent(
+      key,
+      () => <String, Map<String, dynamic>>{},
+    );
+  }
 
   @override
-  Future<SuccessApiResponse<T>> create(T item) async {
+  Future<SuccessApiResponse<T>> create({
+    required T item,
+    String? userId,
+  }) async {
     final id = _getId(item);
-    if (_storage.containsKey(id)) {
+    final userStorage = _getStorageForUser(userId);
+    final userJsonStorage = _getJsonStorageForUser(userId);
+
+    if (userStorage.containsKey(id)) {
       throw BadRequestException(
-        'Item with ID "$id" already exists.',
+        'Item with ID "$id" already exists for user "$userId".',
       );
     }
-    _storage[id] = item;
-    _jsonStorage[id] = _toJson(item);
+
+    userStorage[id] = item;
+    userJsonStorage[id] = _toJson(item);
+
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
     return SuccessApiResponse(data: item);
   }
 
   @override
-  Future<SuccessApiResponse<T>> read(String id) async {
+  Future<SuccessApiResponse<T>> read({
+    required String id,
+    String? userId,
+  }) async {
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
-    final item = _storage[id];
+
+    final userStorage = _getStorageForUser(userId);
+    final item = userStorage[id];
+
     if (item == null) {
-      throw NotFoundException('Item with ID "$id" not found.');
+      throw NotFoundException('Item with ID "$id" not found for user "$userId".');
     }
     return SuccessApiResponse(data: item);
   }
 
   @override
   Future<SuccessApiResponse<PaginatedResponse<T>>> readAll({
+    String? userId,
     String? startAfterId,
     int? limit,
   }) async {
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
 
-    final allItems = _storage.values.toList(); // Get all items
+    final userStorage = _getStorageForUser(userId);
+    final allItems = userStorage.values.toList(); // Get all items for the user
 
     final paginatedResponse = _createPaginatedResponse(
       allItems,
@@ -112,40 +159,48 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
   @override
   Future<SuccessApiResponse<PaginatedResponse<T>>> readAllByQuery(
     Map<String, dynamic> query, {
+    String? userId,
     String? startAfterId,
     int? limit,
   }) async {
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
 
+    final userJsonStorage = _getJsonStorageForUser(userId);
+    final userStorage = _getStorageForUser(userId);
+
     final List<T> matchedItems;
     if (query.isEmpty) {
-      // If query is empty, use all items
-      matchedItems = _storage.values.toList();
+      // If query is empty, use all items for the user
+      matchedItems = userStorage.values.toList();
     } else {
       // Otherwise, filter based on the query
       matchedItems = <T>[];
-      _jsonStorage.forEach((id, jsonItem) {
+      userJsonStorage.forEach((id, dynamic jsonItemDynamic) {
+        // Explicitly cast jsonItem to Map<String, dynamic>
+        final jsonItem = jsonItemDynamic as Map<String, dynamic>;
         var match = true;
         query.forEach((key, value) {
           // Check if the key exists and the value matches
-          if (!jsonItem.containsKey(key) || jsonItem[key] != value) {
+          if (!jsonItem.containsKey(key)) {
+            match = false;
+          } else if (jsonItem[key] != value) {
             match = false;
           }
         });
 
         if (match) {
-          // Retrieve the original item from _storage using the ID
-          // We assume consistency between _storage and _jsonStorage
-          final originalItem = _storage[id];
+          // Retrieve the original item from userStorage using the ID
+          // We assume consistency between userStorage and userJsonStorage
+          final originalItem = userStorage[id];
           if (originalItem != null) {
             matchedItems.add(originalItem);
           } else {
             // This case should ideally not happen if create/update/delete
             // maintain consistency. Log or handle as an internal error if needed.
             print(
-              'Warning: Inconsistency detected. JSON found for ID "$id" '
-              'but original item is missing in _storage.',
+              'Warning: Inconsistency detected for user "$userId". '
+              'JSON found for ID "$id" but original item is missing in storage.',
             );
           }
         }
@@ -161,36 +216,52 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
   }
 
   @override
-  Future<SuccessApiResponse<T>> update(String id, T item) async {
-    final existingItem = _storage[id];
+  Future<SuccessApiResponse<T>> update({
+    required String id,
+    required T item,
+    String? userId,
+  }) async {
+    final userStorage = _getStorageForUser(userId);
+    final userJsonStorage = _getJsonStorageForUser(userId);
+
+    final existingItem = userStorage[id];
     if (existingItem == null) {
-      throw NotFoundException('Item with ID "$id" not found for update.');
+      throw NotFoundException('Item with ID "$id" not found for update for user "$userId".');
     }
 
     final incomingId = _getId(item);
     if (incomingId != id) {
       throw BadRequestException(
         'The ID of the item ("$incomingId") does not match the ID '
-        'in the path ("$id").',
+        'in the path ("$id") for user "$userId".',
       );
     }
 
-    _storage[id] = item;
-    _jsonStorage[id] = _toJson(item);
+    userStorage[id] = item;
+    userJsonStorage[id] = _toJson(item);
+
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
     return SuccessApiResponse(data: item);
   }
 
   @override
-  Future<void> delete(String id) async {
+  Future<void> delete({
+    required String id,
+    String? userId,
+  }) async {
     // Simulate async operation
     await Future<void>.delayed(Duration.zero);
-    if (!_storage.containsKey(id)) {
-      throw NotFoundException('Item with ID "$id" not found for deletion.');
+
+    final userStorage = _getStorageForUser(userId);
+    final userJsonStorage = _getJsonStorageForUser(userId);
+
+    if (!userStorage.containsKey(id)) {
+      throw NotFoundException('Item with ID "$id" not found for deletion for user "$userId".');
     }
-    _storage.remove(id);
-    _jsonStorage.remove(id);
+
+    userStorage.remove(id);
+    userJsonStorage.remove(id);
   }
 
   // Helper function to create a PaginatedResponse object
