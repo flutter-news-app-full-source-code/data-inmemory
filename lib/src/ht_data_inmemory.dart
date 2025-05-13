@@ -132,7 +132,8 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
 
     if (item == null) {
       throw NotFoundException(
-          'Item with ID "$id" not found for user "$userId".');
+        'Item with ID "$id" not found for user "$userId".',
+      );
     }
     return SuccessApiResponse(data: item);
   }
@@ -228,7 +229,8 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     final existingItem = userStorage[id];
     if (existingItem == null) {
       throw NotFoundException(
-          'Item with ID "$id" not found for update for user "$userId".');
+        'Item with ID "$id" not found for update for user "$userId".',
+      );
     }
 
     final incomingId = _getId(item);
@@ -260,7 +262,8 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
 
     if (!userStorage.containsKey(id)) {
       throw NotFoundException(
-          'Item with ID "$id" not found for deletion for user "$userId".');
+        'Item with ID "$id" not found for deletion for user "$userId".',
+      );
     }
 
     userStorage.remove(id);
