@@ -1,159 +1,152 @@
 # ht_data_inmemory
 
-![coverage: percentage](https://img.shields.io/badge/coverage-94-green)
+![coverage: 98%](https://img.shields.io/badge/coverage-98-green)
 [![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis)
 [![License: PolyForm Free Trial](https://img.shields.io/badge/License-PolyForm%20Free%20Trial-blue)](https://polyformproject.org/licenses/free-trial/1.0.0)
 
-An in-memory implementation of the `HtDataClient` interface, designed for testing or local development scenarios. It simulates a remote data source by storing data in memory and mimicking basic API behaviors, including error responses using exceptions defined in `package:ht_http_client`.
+An in-memory implementation of the `HtDataClient` interface, designed primarily for testing, local development, or scenarios where a lightweight, non-persistent data store is sufficient. This package is part of the Headlines Toolkit (HT) ecosystem.
 
 ## Description
 
-This package provides `HtDataInMemoryClient<T>`, a concrete implementation of the abstract `HtDataClient<T>` from the `ht_data_client` package.
+`HtDataInMemoryClient` provides a way to simulate a backend data source entirely in memory. It supports:
+- Standard CRUD (Create, Read, Update, Delete) operations.
+- User-scoped data: Operations can be tied to a specific `userId`.
+- Global data: Operations can target data not associated with any user.
+- Basic querying capabilities via `readAllByQuery`, including:
+    - Filtering on nested object properties using dot-notation (e.g., `category.id`).
+    - Case-insensitive "contains" text search on fields using the `_contains` suffix (e.g., `name_contains`).
+    - Case-insensitive "is one of" checks for comma-separated values using the `_in` suffix (e.g., `status_in=active,pending`). This also supports checking if any element in a list field is present in the query's list of values.
+    - Exact matches for fields without suffixes.
+    - AND logic for all combined filter conditions.
+- Pagination for `readAll` and `readAllByQuery` methods.
 
-Key characteristics:
-- **In-Memory Storage:** Data is stored locally in Dart `Map` objects. Data is lost when the client instance is destroyed.
-- **Dependency on `ht_data_client`:** Implements the standard data client interface.
-- **Requires ID and JSON Logic:** You must provide functions to extract a unique ID (`getId`) and serialize items to JSON (`toJson`) during instantiation. The client does *not* generate IDs itself.
-- **Optional Initial Data:** You can optionally provide a `List<T>` via the `initialData` constructor parameter to pre-populate the client. Throws `ArgumentError` if duplicate IDs are found in the initial data.
-- **Enhanced Querying (`readAllByQuery`):**
-  - Matches against the JSON representation of stored items.
-  - **Nested Property Access:** Supports dot-notation in query keys to target nested fields (e.g., a query key like `'category.id'` will access `item['category']['id']`).
-  - **"IN List" Filtering:** For query keys ending with `_in` (e.g., `'category.id_in'`), the value should be a comma-separated string of items. The client checks if the target property's value is in this list.
-  - **"CONTAINS Text" Filtering:** For query keys ending with `_contains` (e.g., `'title_contains'`), the value is a search term. The client performs a case-insensitive substring check.
-  - **Exact Match Filtering:** Other keys perform an exact match against the target property's value (which can be nested if accessed via dot-notation).
-  - **Logic:** All provided query conditions are ANDed together.
-  - **Caller Responsibility:** The API layer (or other callers) is responsible for constructing the query map with appropriate dot-notation keys and suffixes (`_in`, `_contains`) based on the desired model-specific filtering.
-  - **Limitations:** Does not support range queries, complex sorting beyond the natural order of retrieval, or full-text search engine capabilities.
-- **Error Simulation:** Throws exceptions like `NotFoundException` and `BadRequestException` (from `package:ht_http_client`) to simulate common API errors.
-- **Pagination:** Supports basic pagination via `startAfterId` and `limit` parameters on `readAll` and `readAllByQuery`.
+This client is useful for:
+- Unit and integration testing of repositories or BLoCs that depend on `HtDataClient`.
+- Rapid prototyping and local development without needing a live backend.
+- Demonstrations or examples.
 
 ## Getting Started
 
-Add the following to your `pubspec.yaml` file under `dependencies` (or `dev_dependencies` if only used for testing):
+This package is typically used as a development dependency or a direct dependency in projects that require an in-memory data store for local or test environments.
+
+To use this package, add `ht_data_inmemory` to your `pubspec.yaml` dependencies. If it's from a Git repository (as it is within the HT ecosystem):
 
 ```yaml
 dependencies:
-  ht_data_inmemory:
-    git:
-      url: https://github.com/headlines-toolkit/ht-data-inmemory.git
-      # Consider adding a ref: tag for a specific commit or tag
-  # You also need the base client and http client packages
+  # ht_data_client is also required as it defines the interface
   ht_data_client:
     git:
       url: https://github.com/headlines-toolkit/ht-data-client.git
-
-# Or for development/testing only:
-dev_dependencies:
+      # ref: <specific_commit_or_tag> # Optional: pin to a version
   ht_data_inmemory:
     git:
       url: https://github.com/headlines-toolkit/ht-data-inmemory.git
+      # ref: <specific_commit_or_tag> # Optional: pin to a version
+  # ht_shared is needed for models and exceptions
+  ht_shared:
+    git:
+      url: https://github.com/headlines-toolkit/ht-shared.git
+      # ref: <specific_commit_or_tag> # Optional: pin to a version
 ```
 
 Then run `dart pub get` or `flutter pub get`.
 
 ## Features
 
-Implements the `HtDataClient<T>` interface, providing the following methods:
-- `create(T item)`: Adds an item. Returns `Future<SuccessApiResponse<T>>`. Throws `BadRequestException` if ID already exists.
-- `read(String id)`: Retrieves an item. Returns `Future<SuccessApiResponse<T>>`. Throws `NotFoundException` if ID doesn't exist.
-- `readAll({String? startAfterId, int? limit})`: Retrieves items. Returns `Future<SuccessApiResponse<PaginatedResponse<T>>>`. Supports pagination.
-- `readAllByQuery(Map<String, dynamic> query, {String? startAfterId, int? limit})`: Retrieves items matching a query. Returns `Future<SuccessApiResponse<PaginatedResponse<T>>>`. Supports pagination.
-- `update(String id, T item)`: Updates an item. Returns `Future<SuccessApiResponse<T>>`. Throws `NotFoundException` or `BadRequestException`.
-- `delete(String id)`: Removes an item. Returns `Future<void>`. Throws `NotFoundException`.
+- Implements the `HtDataClient<T>` interface from `package:ht_data_client`.
+- In-memory storage for generic data types `T`.
+- Support for `initialData` to pre-populate the client.
+- User-scoped and global data operations.
+- `create`, `read`, `readAll`, `update`, `delete` methods.
+- `readAllByQuery` with support for nested paths, `_in` (case-insensitive, handles lists), and `_contains` (case-insensitive) operators.
+- Pagination for `readAll` and `readAllByQuery`.
+- Throws standard exceptions from `package:ht_shared` (e.g., `NotFoundException`, `BadRequestException`).
 
 ## Usage
 
+Here's a basic example of how to use `HtDataInMemoryClient` with a simple `Article` model:
+
 ```dart
+import 'package:ht_data_client/ht_data_client.dart';
 import 'package:ht_data_inmemory/ht_data_inmemory.dart';
-import 'package:ht_http_client/ht_http_client.dart' show NotFoundException; // For catching errors
-import 'package:ht_shared/ht_shared.dart'; // For SuccessApiResponse, PaginatedResponse
+import 'package:ht_shared/ht_shared.dart'; // Assuming SuccessApiResponse etc. are here
 
-// Define your data model
-class MyModel {
+// 1. Define your model (ensure it has an ID and toJson method)
+class Article {
+  Article({required this.id, required this.title, this.content});
   final String id;
-  final String name;
-  final int value;
+  final String title;
+  final String? content;
 
-  MyModel({required this.id, required this.name, required this.value});
-
-  // Required for HtDataInMemoryClient query functionality
+  // Required for HtDataInMemoryClient
   Map<String, dynamic> toJson() => {
         'id': id,
-        'name': name,
-        'value': value,
+        'title': title,
+        if (content != null) 'content': content,
       };
+  
+  // For easy comparison in examples/tests
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Article &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          content == other.content;
 
-  // Example factory for deserialization (not directly used by InMemory client,
-  // but typically needed when working with data models)
-  factory MyModel.fromJson(Map<String, dynamic> json) {
-    return MyModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      value: json['value'] as int,
-    );
-  }
+  @override
+  int get hashCode => id.hashCode ^ title.hashCode ^ content.hashCode;
 }
 
 void main() async {
-  // Instantiate the client (empty)
-  final client = HtDataInMemoryClient<MyModel>(
-    toJson: (item) => item.toJson(),
-    getId: (item) => item.id,
-    // Optionally provide initial data:
-    // initialData: [
-    //   MyModel(id: 'pre1', name: 'Preloaded 1', value: 10),
-    //   MyModel(id: 'pre2', name: 'Preloaded 2', value: 20),
-    // ],
+  // 2. Define helper functions for the client
+  String getArticleId(Article article) => article.id;
+  Map<String, dynamic> articleToJson(Article article) => article.toJson();
+
+  // 3. Instantiate the client
+  final client = HtDataInMemoryClient<Article>(
+    getId: getArticleId,
+    toJson: articleToJson,
+    initialData: [
+      Article(id: 'article1', title: 'First Article', content: 'Hello world!'),
+    ],
   );
 
-  // Create an item
-  final newItem = MyModel(id: '1', name: 'Test Item', value: 100);
-  await client.create(newItem);
-  print('Created item: ${newItem.name}');
-
-  // Read the item
+  // 4. Use the client
   try {
-    final readResponse = await client.read('1');
-    final readItem = readResponse.data; // Access data from SuccessApiResponse
-    print('Read item: ${readItem.name}');
-  } on NotFoundException catch (e) {
-    print('Error reading item: ${e.message}');
-  }
+    // Create a new article
+    final newArticle = Article(id: 'article2', title: 'Second Article');
+    SuccessApiResponse<Article> createResponse =
+        await client.create(item: newArticle);
+    print('Created: ${createResponse.data.title}');
 
-  // Read all items (paginated)
-  final allItemsResponse = await client.readAll();
-  final allItems = allItemsResponse.data.items; // Access items list
-  final hasMore = allItemsResponse.data.hasMore;
-  final cursor = allItemsResponse.data.cursor;
-  print('All items count: ${allItems.length}');
-  print('Has more items: $hasMore');
-  print('Next page cursor: $cursor');
+    // Read an article
+    SuccessApiResponse<Article> readResponse =
+        await client.read(id: 'article1');
+    print('Read: ${readResponse.data.title}');
 
-  // Query items (paginated)
-  final query = {'value': 100};
-  final queriedResponse = await client.readAllByQuery(query);
-  final queriedItems = queriedResponse.data.items; // Access items list
-  print('Queried items count (value=100): ${queriedItems.length}');
+    // Query articles
+    SuccessApiResponse<PaginatedResponse<Article>> queryResponse =
+        await client.readAllByQuery({'title_contains': 'Article'});
+    print('Found ${queryResponse.data.items.length} articles matching query:');
+    for (var article in queryResponse.data.items) {
+      print('- ${article.title}');
+    }
 
-  // Update the item
-  final updatedItemData = MyModel(id: '1', name: 'Updated Test Item', value: 150);
-  final updateResponse = await client.update('1', updatedItemData);
-  final updatedItem = updateResponse.data; // Access data from SuccessApiResponse
-  print('Updated item name: ${updatedItem.name}');
+    // Query for articles by a specific user (if applicable)
+    // final userArticlesResponse = await client.readAllByQuery(
+    //   {'title_contains': 'User Post'},
+    //   userId: 'user123',
+    // );
+    // print('Found ${userArticlesResponse.data.items.length} articles for user123.');
 
-  // Delete the item
-  await client.delete('1');
-  print('Deleted item with ID 1');
-
-  // Try reading deleted item (will throw NotFoundException)
-  try {
-    await client.read('1');
-  } on NotFoundException catch (e) {
-    print('Attempted to read deleted item: ${e.message}');
+  } on HtHttpException catch (e) {
+    print('An error occurred: ${e.message}');
   }
 }
 ```
 
 ## License
 
-This package is licensed under the [PolyForm Free Trial](LICENSE). Please review the terms before use.
+This package is licensed under the [PolyForm Free Trial 1.0.0](LICENSE). Please review the terms before use.
