@@ -23,9 +23,12 @@ import 'package:ht_shared/ht_shared.dart';
 ///   (also lowercased).
 /// - **`_contains` Suffix (Case-Insensitive):** For keys like
 ///   `'title_contains'`, performs a case-insensitive substring check.
+///   If multiple `_contains` keys are provided (e.g. from a `q` param
+///   searching multiple fields), they are ORed.
 /// - **Exact Match:** For other keys, compares the item's field value
 ///   (as a string) with the query value (string).
-/// - **Logic:** All query conditions are ANDed.
+/// - **Logic:** Non-`_contains` filters are ANDed. The result of this is
+///   then ANDed with the result of ORing all `_contains` filters.
 /// {@endtemplate}
 class HtDataInMemoryClient<T> implements HtDataClient<T> {
   /// {@macro ht_data_inmemory_client}
@@ -62,8 +65,8 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
   // Stores original items, keyed by userId then itemId
   final Map<String, Map<String, T>> _userScopedStorage = {};
   // Stores JSON representations for querying, keyed by userId then itemId
-  final Map<String, Map<String, Map<String, dynamic>>> _userScopedJsonStorage =
-      {};
+  final Map<String, Map<String, Map<String, dynamic>>>
+      _userScopedJsonStorage = {};
 
   Map<String, T> _getStorageForUser(String? userId) {
     final key = userId ?? _globalDataKey;
@@ -72,9 +75,6 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
 
   Map<String, Map<String, dynamic>> _getJsonStorageForUser(String? userId) {
     final key = userId ?? _globalDataKey;
-    // This should return the inner map for the user, which is Map<String, Map<String, dynamic>>
-    // However, _userScopedJsonStorage stores Map<itemId, jsonDataMap> per user.
-    // So, the value associated with a user key is Map<String, Map<String, dynamic>>.
     return _userScopedJsonStorage.putIfAbsent(
       key,
       () => <String, Map<String, dynamic>>{},
@@ -167,18 +167,15 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
       if (index != -1) {
         startIndex = index + 1;
       } else {
-        // If startAfterId is provided but not found, return empty
         return const PaginatedResponse(items: [], cursor: null, hasMore: false);
       }
     }
 
-    // Ensure startIndex is within bounds
     if (startIndex >= allMatchingItems.length) {
       return const PaginatedResponse(items: [], cursor: null, hasMore: false);
     }
 
-    // Determine items for this page
-    final actualLimit = limit ?? allMatchingItems.length; // Default: all
+    final actualLimit = limit ?? allMatchingItems.length;
     final count = min(actualLimit, allMatchingItems.length - startIndex);
     final endIndex = startIndex + count;
     final pageItems = allMatchingItems.sublist(startIndex, endIndex);
@@ -201,7 +198,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     String? startAfterId,
     int? limit,
   }) async {
-    await Future<void>.delayed(Duration.zero); // Simulate async
+    await Future<void>.delayed(Duration.zero); 
 
     final userJsonStorage = _getJsonStorageForUser(userId);
     final userStorage = _getStorageForUser(userId);
@@ -213,83 +210,98 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
       return SuccessApiResponse(data: paginatedResp);
     }
 
-    final matchedItems = <T>[];
+    final List<T> matchedItems = [];
     userJsonStorage.forEach((itemId, Map<String, dynamic> jsonItem) {
-      var allConditionsMet = true;
-      query.forEach((filterKey, filterValue) {
-        if (!allConditionsMet) return; // Already failed, skip others
+      final List<MapEntry<String, String>> containsFilters = [];
+      final Map<String, String> otherFilters = {};
 
-        var actualPath = filterKey;
-        var operation = 'exact'; // 'exact', 'in', 'contains'
-
-        if (filterKey.endsWith('_in')) {
-          actualPath = filterKey.substring(0, filterKey.length - 3);
-          operation = 'in';
-        } else if (filterKey.endsWith('_contains')) {
-          actualPath = filterKey.substring(0, filterKey.length - 9);
-          operation = 'contains';
-        }
-
-        final dynamic actualItemValue = _getNestedValue(jsonItem, actualPath);
-
-        // FilterValue from API query params is always a String.
-        final filterValueStr = filterValue as String;
-
-        switch (operation) {
-          case 'contains':
-            if (actualItemValue == null) {
-              allConditionsMet = false;
-            } else if (!actualItemValue
-                .toString()
-                .toLowerCase()
-                .contains(filterValueStr.toLowerCase())) {
-              allConditionsMet = false;
-            }
-          case 'in':
-            if (actualItemValue == null) {
-              allConditionsMet = false;
-            } else {
-              final expectedQueryValues = filterValueStr
-                  .split(',')
-                  .map((e) => e.trim().toLowerCase()) // Trim whitespace
-                  .where((e) => e.isNotEmpty) // Remove empty strings
-                  .toList();
-              if (expectedQueryValues.isEmpty && filterValueStr.isNotEmpty) {
-                // case where filterValueStr was just commas e.g. ",,"
-                allConditionsMet = false;
-              } else if (actualItemValue is List) {
-                // Handle list field: check if any item in actualItemValue (list)
-                // is present in expectedQueryValues (list from query)
-                final actualListStr = actualItemValue
-                    .map((e) => e.toString().toLowerCase())
-                    .toList();
-                final foundMatchInList =
-                    expectedQueryValues.any(actualListStr.contains);
-                if (!foundMatchInList) {
-                  allConditionsMet = false;
-                }
-              } else {
-                // Handle single field value
-                if (!expectedQueryValues
-                    .contains(actualItemValue.toString().toLowerCase())) {
-                  allConditionsMet = false;
-                }
-              }
-            }
-          case 'exact':
-          default:
-            if (actualItemValue == null) {
-              // Consider "null" string for matching if actualItemValue is null
-              if (filterValueStr != 'null') {
-                allConditionsMet = false;
-              }
-            } else if (actualItemValue.toString() != filterValueStr) {
-              allConditionsMet = false;
-            }
+      query.forEach((key, value) {
+        if (key.endsWith('_contains')) {
+          containsFilters.add(MapEntry(key, value as String));
+        } else {
+          otherFilters[key] = value as String;
         }
       });
 
-      if (allConditionsMet) {
+      bool matchesOtherFilters = true;
+      if (otherFilters.isNotEmpty) {
+        otherFilters.forEach((filterKey, filterValueStr) {
+          if (!matchesOtherFilters) return;
+
+          var actualPath = filterKey;
+          var operation = 'exact'; 
+
+          if (filterKey.endsWith('_in')) {
+            actualPath = filterKey.substring(0, filterKey.length - 3);
+            operation = 'in';
+          }
+
+          final dynamic actualItemValue = _getNestedValue(jsonItem, actualPath);
+
+          switch (operation) {
+            case 'in':
+              if (actualItemValue == null) {
+                matchesOtherFilters = false;
+              } else {
+                final expectedQueryValues = filterValueStr
+                    .split(',')
+                    .map((e) => e.trim().toLowerCase())
+                    .where((e) => e.isNotEmpty)
+                    .toList();
+                if (expectedQueryValues.isEmpty && filterValueStr.isNotEmpty) {
+                  matchesOtherFilters = false;
+                } else if (actualItemValue is List) {
+                  final actualListStr = actualItemValue
+                      .map((e) => e.toString().toLowerCase())
+                      .toList();
+                  final foundMatchInList =
+                      expectedQueryValues.any(actualListStr.contains);
+                  if (!foundMatchInList) {
+                    matchesOtherFilters = false;
+                  }
+                } else {
+                  if (!expectedQueryValues
+                      .contains(actualItemValue.toString().toLowerCase())) {
+                    matchesOtherFilters = false;
+                  }
+                }
+              }
+              break;
+            case 'exact':
+            default:
+              if (actualItemValue == null) {
+                if (filterValueStr != 'null') {
+                  matchesOtherFilters = false;
+                }
+              } else if (actualItemValue.toString() != filterValueStr) {
+                matchesOtherFilters = false;
+              }
+              break;
+          }
+        });
+      }
+
+      bool matchesAnyContains = false;
+      if (containsFilters.isNotEmpty) {
+        for (final entry in containsFilters) {
+          final filterKey = entry.key;
+          final filterValueStr = entry.value;
+          final actualPath = filterKey.substring(0, filterKey.length - 9);
+          final dynamic actualItemValue = _getNestedValue(jsonItem, actualPath);
+
+          if (actualItemValue != null &&
+              actualItemValue
+                  .toString()
+                  .toLowerCase()
+                  .contains(filterValueStr.toLowerCase())) {
+            matchesAnyContains = true;
+            break; 
+          }
+        }
+      }
+
+      if (matchesOtherFilters &&
+          (containsFilters.isEmpty || matchesAnyContains)) {
         final originalItem = userStorage[itemId];
         if (originalItem != null) {
           matchedItems.add(originalItem);
@@ -328,7 +340,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     userStorage[id] = item;
     userJsonStorage[id] = _toJson(item);
 
-    await Future<void>.delayed(Duration.zero); // Simulate async
+    await Future<void>.delayed(Duration.zero);
     return SuccessApiResponse(data: item);
   }
 
@@ -337,7 +349,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     required String id,
     String? userId,
   }) async {
-    await Future<void>.delayed(Duration.zero); // Simulate async
+    await Future<void>.delayed(Duration.zero);
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final scope = userId ?? 'global';
