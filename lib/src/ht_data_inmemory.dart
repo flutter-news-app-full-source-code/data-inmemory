@@ -65,8 +65,8 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
   // Stores original items, keyed by userId then itemId
   final Map<String, Map<String, T>> _userScopedStorage = {};
   // Stores JSON representations for querying, keyed by userId then itemId
-  final Map<String, Map<String, Map<String, dynamic>>>
-      _userScopedJsonStorage = {};
+  final Map<String, Map<String, Map<String, dynamic>>> _userScopedJsonStorage =
+      {};
 
   Map<String, T> _getStorageForUser(String? userId) {
     final key = userId ?? _globalDataKey;
@@ -198,7 +198,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     String? startAfterId,
     int? limit,
   }) async {
-    await Future<void>.delayed(Duration.zero); 
+    await Future<void>.delayed(Duration.zero);
 
     final userJsonStorage = _getJsonStorageForUser(userId);
     final userStorage = _getStorageForUser(userId);
@@ -210,10 +210,10 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
       return SuccessApiResponse(data: paginatedResp);
     }
 
-    final List<T> matchedItems = [];
+    final matchedItems = <T>[];
     userJsonStorage.forEach((itemId, Map<String, dynamic> jsonItem) {
-      final List<MapEntry<String, String>> containsFilters = [];
-      final Map<String, String> otherFilters = {};
+      final containsFilters = <MapEntry<String, String>>[];
+      final otherFilters = <String, String>{};
 
       query.forEach((key, value) {
         if (key.endsWith('_contains')) {
@@ -223,13 +223,13 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
         }
       });
 
-      bool matchesOtherFilters = true;
+      var matchesOtherFilters = true;
       if (otherFilters.isNotEmpty) {
         otherFilters.forEach((filterKey, filterValueStr) {
           if (!matchesOtherFilters) return;
 
           var actualPath = filterKey;
-          var operation = 'exact'; 
+          var operation = 'exact';
 
           if (filterKey.endsWith('_in')) {
             actualPath = filterKey.substring(0, filterKey.length - 3);
@@ -266,7 +266,6 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
                   }
                 }
               }
-              break;
             case 'exact':
             default:
               if (actualItemValue == null) {
@@ -276,12 +275,11 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
               } else if (actualItemValue.toString() != filterValueStr) {
                 matchesOtherFilters = false;
               }
-              break;
           }
         });
       }
 
-      bool matchesAnyContains = false;
+      var matchesAnyContains = false;
       if (containsFilters.isNotEmpty) {
         for (final entry in containsFilters) {
           final filterKey = entry.key;
@@ -295,7 +293,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
                   .toLowerCase()
                   .contains(filterValueStr.toLowerCase())) {
             matchesAnyContains = true;
-            break; 
+            break;
           }
         }
       }
