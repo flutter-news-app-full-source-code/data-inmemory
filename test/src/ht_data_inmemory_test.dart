@@ -292,6 +292,98 @@ void main() {
         expect(response.data.hasMore, isTrue); // itemA3 remains
         expect(response.data.cursor, equals(itemA2.id));
       });
+
+      test('should filter by category_in with multiple values', () async {
+        final response = await client.readAllByQuery({'category_in': 'A,B'});
+        expect(response.data.items, hasLength(3));
+        expect(response.data.items, containsAll([item1, item2, item3]));
+      });
+
+      test('should filter by category_in with a single value', () async {
+        final response = await client.readAllByQuery({'category_in': 'B'});
+        expect(response.data.items, hasLength(1));
+        expect(response.data.items, contains(item2));
+      });
+
+      test('should return empty if category_in does not match', () async {
+        final response = await client.readAllByQuery({'category_in': 'C,D'});
+        expect(response.data.items, isEmpty);
+      });
+
+      test('should filter by value_contains (case-insensitive)', () async {
+        // Add more specific items for contains testing
+        const itemValA =
+            _TestModel(id: 'valA', value: 'UniqueValueAlpha', category: 'C');
+        const itemValB =
+            _TestModel(id: 'valB', value: 'another value beta', category: 'C');
+        await client.create(item: itemValA);
+        await client.create(item: itemValB);
+
+        // Test 'value_contains'
+        var response =
+            await client.readAllByQuery({'value_contains': 'unique'});
+        expect(response.data.items, hasLength(1));
+        expect(response.data.items, contains(itemValA));
+
+        response = await client.readAllByQuery({'value_contains': 'VALUE'});
+        expect(
+          response.data.items,
+          hasLength(5),
+        ); // item1, item2, item3, itemValA, itemValB
+        expect(
+          response.data.items,
+          containsAll([item1, item2, item3, itemValA, itemValB]),
+        );
+
+        response = await client.readAllByQuery({'value_contains': 'AlPhA'});
+        expect(response.data.items, hasLength(1));
+        expect(response.data.items, contains(itemValA));
+      });
+
+      test('should return empty if value_contains does not match', () async {
+        final response =
+            await client.readAllByQuery({'value_contains': 'nonexistent'});
+        expect(response.data.items, isEmpty);
+      });
+
+      test('should AND multiple _in and _contains filters', () async {
+        const itemX =
+            _TestModel(id: 'x1', value: 'special value x', category: 'X');
+        const itemY =
+            _TestModel(id: 'y1', value: 'special value y', category: 'Y');
+        await client.create(item: itemX);
+        await client.create(item: itemY);
+
+        // Query for category X AND value containing "special"
+        final response = await client
+            .readAllByQuery({'category_in': 'X', 'value_contains': 'special'});
+        expect(response.data.items, hasLength(1));
+        expect(response.data.items, contains(itemX));
+      });
+
+      test('should handle dot-notation keys for exact match (simulated)',
+          () async {
+        // This test simulates how the API might send a pre-transformed key
+        // even if the _TestModel itself isn't deeply nested.
+        // The _getNestedValue handles single-part paths correctly.
+        final response = await client.readAllByQuery({'value': 'value1'});
+        expect(response.data.items, hasLength(1));
+        expect(response.data.items, contains(item1));
+      });
+
+      test('should handle dot-notation keys for _in (simulated with top-level)',
+          () async {
+        final response = await client.readAllByQuery({'category_in': 'A,B'});
+        expect(response.data.items, hasLength(3));
+      });
+
+      test(
+          'should handle dot-notation keys for _contains (simulated with top-level)',
+          () async {
+        final response =
+            await client.readAllByQuery({'value_contains': 'value'});
+        expect(response.data.items, hasLength(3)); // item1, item2, item3
+      });
     });
 
     group('update', () {
