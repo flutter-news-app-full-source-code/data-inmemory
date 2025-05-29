@@ -18,10 +18,35 @@ import 'package:ht_shared/ht_shared.dart';
 /// - **ID Management:** This client relies on the provided `getId` function
 ///   to extract a unique identifier from items of type [T]. It does **not**
 ///   generate IDs itself. Ensure items provided to `create` have unique IDs.
-/// - **Querying:** The `readAllByQuery` method performs a simple key-value match
-///   against the JSON representation of the stored items (obtained via the
-///   provided `toJson` function). It does not support complex query logic
-///   (like range queries, sorting beyond natural order, etc.).
+/// - **Querying (`readAllByQuery`):**
+///   - Matches against the JSON representation of stored items.
+///   - **Nested Property Access:** Supports dot-notation in query keys to target
+///     nested fields within the JSON structure (e.g., a query key like
+///     `'category.id'` will attempt to access `item['category']['id']`).
+///   - **"IN List" Filtering:** For query keys ending with an `_in` suffix
+///     (e.g., `'category.id_in'`, `'tags_in'`), the corresponding query value
+///     is expected to be a single string containing comma-separated values.
+///     The client will check if the actual property's value (obtained via the
+///     dot-notation path before `_in`, and converted to a string) is one of
+///     the values in the comma-separated list.
+///   - **"CONTAINS Text" Filtering:** For query keys ending with a `_contains`
+///     suffix (e.g., `'title_contains'`, `'description_contains'`), the
+///     corresponding query value is treated as a search term. The client
+///     performs a case-insensitive substring check to see if the actual
+///     property's string value (obtained via the dot-notation path before
+///     `_contains`) contains the search term.
+///   - **Exact Match Filtering:** For query keys that do not use the `_in` or
+///     `_contains` suffixes, an exact equality match is performed between the
+///     actual property's value (obtained via the dot-notation path) and the
+///     query value.
+///   - **Logic:** All conditions derived from the provided query map are ANDed
+///     together to determine a match.
+///   - **Caller Responsibility:** The structure of the query map, including the
+///     use of dot-notation and suffixes like `_in` or `_contains`, is determined
+///     by the caller (e.g., the API layer), which should align with the
+///     model-specific filtering rules.
+///   - **Limitations:** Does not support range queries, complex sorting beyond
+///     natural order of retrieval, or full-text search engine capabilities.
 /// - **Error Simulation:** Throws exceptions like [NotFoundException] and
 ///   [BadRequestException] to mimic potential API errors, using types defined
 ///   in `package:ht_shared`. It does not simulate network or auth errors
@@ -179,15 +204,61 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
       // Otherwise, filter based on the query
       matchedItems = <T>[];
       userJsonStorage.forEach((id, dynamic jsonItemDynamic) {
-        // Explicitly cast jsonItem to Map<String, dynamic>
         final jsonItem = jsonItemDynamic as Map<String, dynamic>;
         var match = true;
-        query.forEach((key, value) {
-          // Check if the key exists and the value matches
-          if (!jsonItem.containsKey(key)) {
-            match = false;
-          } else if (jsonItem[key] != value) {
-            match = false;
+
+        query.forEach((filterKey, filterValue) {
+          if (!match) return; // Already failed a condition, skip others
+
+          var actualPath = filterKey;
+          var isContainsSearch = false;
+          var isInListSearch = false;
+
+          if (filterKey.endsWith('_in')) {
+            actualPath = filterKey.substring(0, filterKey.length - 3);
+            isInListSearch = true;
+          } else if (filterKey.endsWith('_contains')) {
+            actualPath = filterKey.substring(0, filterKey.length - 9);
+            isContainsSearch = true;
+          }
+
+          final dynamic actualItemValue = _getNestedValue(jsonItem, actualPath);
+
+          if (isInListSearch) {
+            if (filterValue is! String) {
+              // Expected comma-separated string for _in queries
+              match = false;
+              print(
+                'Warning: Filter value for "$filterKey" is not a String.',
+              );
+              return;
+            }
+            final expectedValues = filterValue.split(',');
+            if (actualItemValue == null ||
+                !expectedValues.contains(actualItemValue.toString())) {
+              match = false;
+            }
+          } else if (isContainsSearch) {
+            if (actualItemValue == null || filterValue is! String) {
+              match = false;
+              if (filterValue is! String) {
+                print(
+                  'Warning: Filter value for "$filterKey" is not a String.',
+                );
+              }
+              // Removed return; to allow loop to continue if match is false
+            } else if (!actualItemValue
+                .toString()
+                .toLowerCase()
+                // ignore: unnecessary_parenthesis
+                .contains((filterValue).toLowerCase())) {
+              match = false;
+            }
+          } else {
+            // Exact match
+            if (actualItemValue != filterValue) {
+              match = false;
+            }
           }
         });
 
@@ -268,6 +339,24 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
 
     userStorage.remove(id);
     userJsonStorage.remove(id);
+  }
+
+  // Helper to safely access nested values in a map using dot notation.
+  dynamic _getNestedValue(Map<String, dynamic> item, String dotPath) {
+    if (dotPath.isEmpty) {
+      return null;
+    }
+    final parts = dotPath.split('.');
+    dynamic currentValue = item;
+    for (final part in parts) {
+      if (currentValue is Map<String, dynamic> &&
+          currentValue.containsKey(part)) {
+        currentValue = currentValue[part];
+      } else {
+        return null; // Path not found or intermediate value is not a map
+      }
+    }
+    return currentValue;
   }
 
   // Helper function to create a PaginatedResponse object
