@@ -1,6 +1,6 @@
 # ht_data_inmemory
 
-![coverage: percentage](https://img.shields.io/badge/coverage-98-green)
+![coverage: percentage](https://img.shields.io/badge/coverage-94-green)
 [![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis)
 [![License: PolyForm Free Trial](https://img.shields.io/badge/License-PolyForm%20Free%20Trial-blue)](https://polyformproject.org/licenses/free-trial/1.0.0)
 
@@ -15,7 +15,15 @@ Key characteristics:
 - **Dependency on `ht_data_client`:** Implements the standard data client interface.
 - **Requires ID and JSON Logic:** You must provide functions to extract a unique ID (`getId`) and serialize items to JSON (`toJson`) during instantiation. The client does *not* generate IDs itself.
 - **Optional Initial Data:** You can optionally provide a `List<T>` via the `initialData` constructor parameter to pre-populate the client. Throws `ArgumentError` if duplicate IDs are found in the initial data.
-- **Simple Querying:** The `readAllByQuery` method performs basic key-value matching on the JSON representation of items. It does not support complex queries (ranges, advanced sorting, etc.).
+- **Enhanced Querying (`readAllByQuery`):**
+  - Matches against the JSON representation of stored items.
+  - **Nested Property Access:** Supports dot-notation in query keys to target nested fields (e.g., a query key like `'category.id'` will access `item['category']['id']`).
+  - **"IN List" Filtering:** For query keys ending with `_in` (e.g., `'category.id_in'`), the value should be a comma-separated string of items. The client checks if the target property's value is in this list.
+  - **"CONTAINS Text" Filtering:** For query keys ending with `_contains` (e.g., `'title_contains'`), the value is a search term. The client performs a case-insensitive substring check.
+  - **Exact Match Filtering:** Other keys perform an exact match against the target property's value (which can be nested if accessed via dot-notation).
+  - **Logic:** All provided query conditions are ANDed together.
+  - **Caller Responsibility:** The API layer (or other callers) is responsible for constructing the query map with appropriate dot-notation keys and suffixes (`_in`, `_contains`) based on the desired model-specific filtering.
+  - **Limitations:** Does not support range queries, complex sorting beyond the natural order of retrieval, or full-text search engine capabilities.
 - **Error Simulation:** Throws exceptions like `NotFoundException` and `BadRequestException` (from `package:ht_http_client`) to simulate common API errors.
 - **Pagination:** Supports basic pagination via `startAfterId` and `limit` parameters on `readAll` and `readAllByQuery`.
 
