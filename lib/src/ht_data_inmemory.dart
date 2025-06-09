@@ -213,7 +213,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     // This makes the generic client behave correctly for known model types.
     final modelType = T.runtimeType;
 
-    Set<String> allowedKeys = receivedKeys; // Default to allowing all
+    var allowedKeys = receivedKeys; // Default to allowing all
     String? modelNameForError;
 
     if (modelType == Headline) {
@@ -418,9 +418,8 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
 
     // Extract pagination parameters from the original query, not the transformed one
     final finalStartAfterId = query['startAfterId'] as String?;
-    final finalLimit = query['limit'] != null
-        ? int.tryParse(query['limit'] as String)
-        : null;
+    final finalLimit =
+        query['limit'] != null ? int.tryParse(query['limit'] as String) : null;
 
     final paginatedResponse =
         _createPaginatedResponse(matchedItems, finalStartAfterId, finalLimit);
