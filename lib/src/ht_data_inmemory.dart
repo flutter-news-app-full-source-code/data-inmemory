@@ -308,7 +308,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
 
     // Validate received keys against allowed keys for the specific models
     final receivedKeysForValidation = rawQuery.keys.toSet()
-      ..removeAll({'startAfterId', 'limit'});
+      ..removeAll({'startAfterId', 'limit', 'model'});
 
     if (modelNameForError != null) {
       for (final key in receivedKeysForValidation) {
