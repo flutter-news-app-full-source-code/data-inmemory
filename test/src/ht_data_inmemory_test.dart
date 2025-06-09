@@ -488,25 +488,22 @@ void main() {
         // model1 (Item One), model2 (Item Two) also match 'Item'
         // Total 5 items match 'name_contains': 'Item'
 
-        var response =
-            await client.readAllByQuery({'name_contains': 'Item'}, limit: 2);
+        var response = await client.readAllByQuery(
+          {'name_contains': 'Item', 'limit': '2'},
+        );
         expect(response.data.items.length, 2);
         expect(response.data.hasMore, isTrue);
         final cursor1 = response.data.cursor;
 
         response = await client.readAllByQuery(
-          {'name_contains': 'Item'},
-          limit: 2,
-          startAfterId: cursor1,
+          {'name_contains': 'Item', 'limit': '2', 'startAfterId': cursor1},
         );
         expect(response.data.items.length, 2);
         expect(response.data.hasMore, isTrue);
         final cursor2 = response.data.cursor;
 
         response = await client.readAllByQuery(
-          {'name_contains': 'Item'},
-          limit: 2,
-          startAfterId: cursor2,
+          {'name_contains': 'Item', 'limit': '2', 'startAfterId': cursor2},
         );
         expect(response.data.items.length, 1);
         expect(response.data.hasMore, isFalse);
