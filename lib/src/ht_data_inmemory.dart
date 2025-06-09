@@ -216,14 +216,14 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
 
     // Determine the model type at runtime to apply specific transformations.
     // This makes the generic client behave correctly for known model types.
-    final modelType = T.runtimeType;
-    // DEBUG: Log the detected model type
-    print('DEBUG: _transformQuery detected modelType: $modelType');
+    // Using `T == SomeType` for correct generic type comparison.
+    // DEBUG: Log the detected generic type T
+    print('DEBUG: _transformQuery detected generic type T: $T');
 
     Set<String> allowedKeys;
     String? modelNameForError;
 
-    if (modelType == Headline) {
+    if (T == Headline) {
       modelNameForError = 'headline';
       allowedKeys = {'categories', 'sources', 'q'};
       final qValue = rawQuery['q'] as String?;
@@ -245,7 +245,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
           print('DEBUG: Headline: Applied source.id_in: $sources');
         }
       }
-    } else if (modelType == Source) {
+    } else if (T == Source) {
       modelNameForError = 'source';
       allowedKeys = {'countries', 'sourceTypes', 'languages', 'q'};
       final qValue = rawQuery['q'] as String?;
@@ -273,7 +273,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
           print('DEBUG: Source: Applied language_in: $languages');
         }
       }
-    } else if (modelType == Category) {
+    } else if (T == Category) {
       modelNameForError = 'category';
       allowedKeys = {'q'};
       final qValue = rawQuery['q'] as String?;
@@ -282,7 +282,7 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
         // DEBUG: Applied q filter for Category
         print('DEBUG: Category: Applied name_contains for q: $qValue');
       }
-    } else if (modelType == Country) {
+    } else if (T == Country) {
       modelNameForError = 'country';
       allowedKeys = {'q'};
       final qValue = rawQuery['q'] as String?;
@@ -304,8 +304,6 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
           transformed[key] = value;
         }
       });
-      // DEBUG: Passed through all non-standard query params for other models
-      print('DEBUG: Other Model: Passed through raw query params directly.');
     }
 
     // Validate received keys against allowed keys for the specific models
