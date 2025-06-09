@@ -199,35 +199,48 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
   /// directly consume queries from the Flutter app's `HeadlinesFeedBloc`.
   Map<String, dynamic> _transformQuery(Map<String, dynamic> rawQuery) {
     final transformed = <String, dynamic>{};
-    final receivedKeys = rawQuery.keys.toSet();
+
+    // First, apply the initial transformation similar to HtDataApi:
+    // - Rename 'query' to 'q'
+    // - Join list values into comma-separated strings
+    final processedRawQuery = <String, dynamic>{};
+    for (final entry in rawQuery.entries) {
+      final key = entry.key == 'query' ? 'q' : entry.key;
+      final value = entry.value;
+      if (value is List) {
+        processedRawQuery[key] = value.map((e) => e.toString()).join(',');
+      } else {
+        processedRawQuery[key] = value;
+      }
+    }
 
     // Always pass through pagination parameters directly
-    if (rawQuery.containsKey('startAfterId')) {
-      transformed['startAfterId'] = rawQuery['startAfterId'];
+    if (processedRawQuery.containsKey('startAfterId')) {
+      transformed['startAfterId'] = processedRawQuery['startAfterId'];
     }
-    if (rawQuery.containsKey('limit')) {
-      transformed['limit'] = rawQuery['limit'];
+    if (processedRawQuery.containsKey('limit')) {
+      transformed['limit'] = processedRawQuery['limit'];
     }
 
     // Determine the model type at runtime to apply specific transformations.
     // This makes the generic client behave correctly for known model types.
     final modelType = T.runtimeType;
 
-    var allowedKeys = receivedKeys; // Default to allowing all
+    Set<String> allowedKeys;
     String? modelNameForError;
 
     if (modelType == Headline) {
       modelNameForError = 'headline';
       allowedKeys = {'categories', 'sources', 'q'};
-      final qValue = rawQuery['q'] as String?;
+      final qValue = processedRawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
         transformed['title_contains'] = qValue;
       } else {
-        final categories = rawQuery['categories'] as String?;
+        final categories = processedRawQuery['categories'] as String?;
         if (categories != null && categories.isNotEmpty) {
           transformed['category.id_in'] = categories;
         }
-        final sources = rawQuery['sources'] as String?;
+        final sources = processedRawQuery['sources'] as String?;
         if (sources != null && sources.isNotEmpty) {
           transformed['source.id_in'] = sources;
         }
@@ -235,19 +248,19 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     } else if (modelType == Source) {
       modelNameForError = 'source';
       allowedKeys = {'countries', 'sourceTypes', 'languages', 'q'};
-      final qValue = rawQuery['q'] as String?;
+      final qValue = processedRawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
         transformed['name_contains'] = qValue;
       } else {
-        final countries = rawQuery['countries'] as String?;
+        final countries = processedRawQuery['countries'] as String?;
         if (countries != null && countries.isNotEmpty) {
           transformed['headquarters.iso_code_in'] = countries;
         }
-        final sourceTypes = rawQuery['sourceTypes'] as String?;
+        final sourceTypes = processedRawQuery['sourceTypes'] as String?;
         if (sourceTypes != null && sourceTypes.isNotEmpty) {
           transformed['source_type_in'] = sourceTypes;
         }
-        final languages = rawQuery['languages'] as String?;
+        final languages = processedRawQuery['languages'] as String?;
         if (languages != null && languages.isNotEmpty) {
           transformed['language_in'] = languages;
         }
@@ -255,14 +268,14 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     } else if (modelType == Category) {
       modelNameForError = 'category';
       allowedKeys = {'q'};
-      final qValue = rawQuery['q'] as String?;
+      final qValue = processedRawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
         transformed['name_contains'] = qValue;
       }
     } else if (modelType == Country) {
       modelNameForError = 'country';
       allowedKeys = {'q'};
-      final qValue = rawQuery['q'] as String?;
+      final qValue = processedRawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
         transformed['name_contains'] = qValue;
         transformed['iso_code_contains'] = qValue;
@@ -271,7 +284,9 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
       // For other models (e.g., User, UserAppSettings, AppConfig),
       // pass through all non-standard query params directly.
       // This assumes they are already in the correct format for exact match.
-      rawQuery.forEach((key, value) {
+      allowedKeys = processedRawQuery.keys.toSet()
+        ..removeAll({'startAfterId', 'limit'});
+      processedRawQuery.forEach((key, value) {
         if (key != 'startAfterId' && key != 'limit') {
           transformed[key] = value;
         }
@@ -279,11 +294,12 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     }
 
     // Validate received keys against allowed keys for the specific models
+    final receivedKeysForValidation = processedRawQuery.keys.toSet()
+      ..removeAll({'startAfterId', 'limit'});
+
     if (modelNameForError != null) {
-      for (final key in receivedKeys) {
-        if (!allowedKeys.contains(key) &&
-            key != 'startAfterId' &&
-            key != 'limit') {
+      for (final key in receivedKeysForValidation) {
+        if (!allowedKeys.contains(key)) {
           throw BadRequestException(
             'Invalid query parameter "$key" for model "$modelNameForError". '
             'Allowed parameters are: ${allowedKeys.join(', ')}.',
