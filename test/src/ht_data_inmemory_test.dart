@@ -91,6 +91,92 @@ class TestDeeper {
   // Removed Equatable props
 }
 
+// Define a simple Source model for testing _transformQuery branches
+class TestSource {
+  const TestSource({
+    required this.id,
+    required this.name,
+    this.sourceType,
+    this.language,
+    this.headquarters,
+  });
+
+  factory TestSource.fromJson(Map<String, dynamic> json) {
+    return TestSource(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      sourceType: json['source_type'] as String?,
+      language: json['language'] as String?,
+      headquarters: json['headquarters'] != null
+          ? TestCountry.fromJson(json['headquarters'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
+  final String id;
+  final String name;
+  final String? sourceType;
+  final String? language;
+  final TestCountry? headquarters;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      if (sourceType != null) 'source_type': sourceType,
+      if (language != null) 'language': language,
+      if (headquarters != null) 'headquarters': headquarters!.toJson(),
+    };
+  }
+}
+
+// Define a simple Country model for testing _transformQuery branches
+class TestCountry {
+  const TestCountry({required this.id, required this.name, this.isoCode});
+
+  factory TestCountry.fromJson(Map<String, dynamic> json) {
+    return TestCountry(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      isoCode: json['iso_code'] as String?,
+    );
+  }
+
+  final String id;
+  final String name;
+  final String? isoCode;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      if (isoCode != null) 'iso_code': isoCode,
+    };
+  }
+}
+
+// Define a generic model for testing the 'else' branch of _transformQuery
+class TestOtherModel {
+  const TestOtherModel({required this.id, this.value});
+
+  factory TestOtherModel.fromJson(Map<String, dynamic> json) {
+    return TestOtherModel(
+      id: json['id'] as String,
+      value: json['value'] as String?,
+    );
+  }
+
+  final String id;
+  final String? value;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      if (value != null) 'value': value,
+    };
+  }
+}
+
 void main() {
   group('HtDataInMemory', () {
     late HtDataInMemory<TestModel> client;
@@ -143,6 +229,18 @@ void main() {
       // Add user-specific data
       // ignore: cascade_invocations
       client.create(item: model3User1, userId: 'user1');
+    });
+
+    test('constructor throws ArgumentError for duplicate ID in initialData',
+        () {
+      expect(
+        () => HtDataInMemory<TestModel>(
+          getId: getId,
+          toJson: toJson,
+          initialData: [model1, model1], // Duplicate ID
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
     });
 
     group('CRUD Operations', () {
@@ -510,4 +608,5 @@ void main() {
       });
     });
   });
+
 }
