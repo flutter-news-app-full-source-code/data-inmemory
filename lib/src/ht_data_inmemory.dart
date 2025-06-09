@@ -6,7 +6,7 @@ import 'dart:math';
 import 'package:ht_data_client/ht_data_client.dart';
 import 'package:ht_shared/ht_shared.dart';
 
-/// {@template ht_data_inmemory_client}
+/// {@template ht_data_inmemory}
 /// An in-memory implementation of [HtDataClient] for testing or local
 /// development.
 ///
@@ -32,9 +32,9 @@ import 'package:ht_shared/ht_shared.dart';
 /// - **Logic:** Non-`_contains` filters are ANDed. The result of this is
 ///   then ANDed with the result of ORing all `_contains` filters.
 /// {@endtemplate}
-class HtDataInMemoryClient<T> implements HtDataClient<T> {
-  /// {@macro ht_data_inmemory_client}
-  HtDataInMemoryClient({
+class HtDataInMemory<T> implements HtDataClient<T> {
+  /// {@macro ht_data_inmemory}
+  HtDataInMemory({
     required ToJson<T> toJson,
     required String Function(T item) getId,
     List<T>? initialData,

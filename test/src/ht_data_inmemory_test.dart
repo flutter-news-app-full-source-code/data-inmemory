@@ -92,8 +92,8 @@ class TestDeeper {
 }
 
 void main() {
-  group('HtDataInMemoryClient', () {
-    late HtDataInMemoryClient<TestModel> client;
+  group('HtDataInMemory', () {
+    late HtDataInMemory<TestModel> client;
     const model1 = TestModel(
       id: 'id1',
       name: 'Item One',
@@ -135,7 +135,7 @@ void main() {
     Map<String, dynamic> toJson(TestModel item) => item.toJson();
 
     setUp(() {
-      client = HtDataInMemoryClient<TestModel>(
+      client = HtDataInMemory<TestModel>(
         getId: getId,
         toJson: toJson,
         initialData: [model1, model2], // Global data
