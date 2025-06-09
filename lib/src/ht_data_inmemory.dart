@@ -191,6 +191,110 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     );
   }
 
+  /// Transforms raw query parameters (like those from URL queries) into the
+  /// internal format expected by the in-memory client's filtering logic.
+  ///
+  /// This method mimics the query translation performed by the `ht-api`
+  /// backend's data route handlers, allowing the `HtDataInMemoryClient` to
+  /// directly consume queries from the Flutter app's `HeadlinesFeedBloc`.
+  Map<String, dynamic> _transformQuery(Map<String, dynamic> rawQuery) {
+    final transformed = <String, dynamic>{};
+    final receivedKeys = rawQuery.keys.toSet();
+
+    // Always pass through pagination parameters directly
+    if (rawQuery.containsKey('startAfterId')) {
+      transformed['startAfterId'] = rawQuery['startAfterId'];
+    }
+    if (rawQuery.containsKey('limit')) {
+      transformed['limit'] = rawQuery['limit'];
+    }
+
+    // Determine the model type at runtime to apply specific transformations.
+    // This makes the generic client behave correctly for known model types.
+    final modelType = T.runtimeType;
+
+    var allowedKeys = receivedKeys; // Default to allowing all
+    String? modelNameForError;
+
+    if (modelType == Headline) {
+      modelNameForError = 'headline';
+      allowedKeys = {'categories', 'sources', 'q'};
+      final qValue = rawQuery['q'] as String?;
+      if (qValue != null && qValue.isNotEmpty) {
+        transformed['title_contains'] = qValue;
+      } else {
+        final categories = rawQuery['categories'] as String?;
+        if (categories != null && categories.isNotEmpty) {
+          transformed['category.id_in'] = categories;
+        }
+        final sources = rawQuery['sources'] as String?;
+        if (sources != null && sources.isNotEmpty) {
+          transformed['source.id_in'] = sources;
+        }
+      }
+    } else if (modelType == Source) {
+      modelNameForError = 'source';
+      allowedKeys = {'countries', 'sourceTypes', 'languages', 'q'};
+      final qValue = rawQuery['q'] as String?;
+      if (qValue != null && qValue.isNotEmpty) {
+        transformed['name_contains'] = qValue;
+      } else {
+        final countries = rawQuery['countries'] as String?;
+        if (countries != null && countries.isNotEmpty) {
+          transformed['headquarters.iso_code_in'] = countries;
+        }
+        final sourceTypes = rawQuery['sourceTypes'] as String?;
+        if (sourceTypes != null && sourceTypes.isNotEmpty) {
+          transformed['source_type_in'] = sourceTypes;
+        }
+        final languages = rawQuery['languages'] as String?;
+        if (languages != null && languages.isNotEmpty) {
+          transformed['language_in'] = languages;
+        }
+      }
+    } else if (modelType == Category) {
+      modelNameForError = 'category';
+      allowedKeys = {'q'};
+      final qValue = rawQuery['q'] as String?;
+      if (qValue != null && qValue.isNotEmpty) {
+        transformed['name_contains'] = qValue;
+      }
+    } else if (modelType == Country) {
+      modelNameForError = 'country';
+      allowedKeys = {'q'};
+      final qValue = rawQuery['q'] as String?;
+      if (qValue != null && qValue.isNotEmpty) {
+        transformed['name_contains'] = qValue;
+        transformed['iso_code_contains'] = qValue;
+      }
+    } else {
+      // For other models (e.g., User, UserAppSettings, AppConfig),
+      // pass through all non-standard query params directly.
+      // This assumes they are already in the correct format for exact match.
+      rawQuery.forEach((key, value) {
+        if (key != 'startAfterId' && key != 'limit') {
+          transformed[key] = value;
+        }
+      });
+    }
+
+    // Validate received keys against allowed keys for the specific models
+    if (modelNameForError != null) {
+      for (final key in receivedKeys) {
+        if (!allowedKeys.contains(key) &&
+            key != 'startAfterId' &&
+            key != 'limit') {
+          throw BadRequestException(
+            'Invalid query parameter "$key" for model "$modelNameForError". '
+            'Allowed parameters are: ${allowedKeys.join(', ')}.',
+          );
+        }
+      }
+    }
+
+    return transformed;
+  }
+
   @override
   Future<SuccessApiResponse<PaginatedResponse<T>>> readAllByQuery(
     Map<String, dynamic> query, {
@@ -203,7 +307,10 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
     final userJsonStorage = _getJsonStorageForUser(userId);
     final userStorage = _getStorageForUser(userId);
 
-    if (query.isEmpty) {
+    // Transform the incoming query parameters before processing
+    final transformedQuery = _transformQuery(query);
+
+    if (transformedQuery.isEmpty) {
       final allItems = userStorage.values.toList();
       final paginatedResp =
           _createPaginatedResponse(allItems, startAfterId, limit);
@@ -215,10 +322,12 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
       final containsFilters = <MapEntry<String, String>>[];
       final otherFilters = <String, String>{};
 
-      query.forEach((key, value) {
+      // Use transformedQuery for filtering
+      transformedQuery.forEach((key, value) {
         if (key.endsWith('_contains')) {
           containsFilters.add(MapEntry(key, value as String));
-        } else {
+        } else if (key != 'startAfterId' && key != 'limit') {
+          // Exclude pagination params from otherFilters
           otherFilters[key] = value as String;
         }
       });
@@ -307,8 +416,13 @@ class HtDataInMemoryClient<T> implements HtDataClient<T> {
       }
     });
 
+    // Extract pagination parameters from the original query, not the transformed one
+    final finalStartAfterId = query['startAfterId'] as String?;
+    final finalLimit =
+        query['limit'] != null ? int.tryParse(query['limit'] as String) : null;
+
     final paginatedResponse =
-        _createPaginatedResponse(matchedItems, startAfterId, limit);
+        _createPaginatedResponse(matchedItems, finalStartAfterId, finalLimit);
     return SuccessApiResponse(data: paginatedResponse);
   }
 
