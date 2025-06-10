@@ -91,9 +91,13 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     final id = _getId(item);
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
+    final scope = userId ?? 'global';
+    print(
+        'DEBUG: HtDataInMemory.create<$T> called for ID: "$id", user: "$scope"');
 
     if (userStorage.containsKey(id)) {
-      final scope = userId ?? 'global';
+      print(
+          'DEBUG: HtDataInMemory.create<$T> - Item with ID "$id" already exists for user "$scope".');
       throw BadRequestException(
         'Item with ID "$id" already exists for user "$scope".',
       );
@@ -101,8 +105,9 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     userStorage[id] = item;
     userJsonStorage[id] = _toJson(item);
-
-    await Future<void>.delayed(Duration.zero); // Simulate async
+    print(
+        'DEBUG: HtDataInMemory.create<$T> - Item ID: "$id" added for user: "$scope". Current items: ${userStorage.keys.length}');
+    // await Future<void>.delayed(Duration.zero); // Simulate async
     return SuccessApiResponse(data: item);
   }
 
@@ -111,16 +116,23 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     required String id,
     String? userId,
   }) async {
-    await Future<void>.delayed(Duration.zero); // Simulate async
+    // await Future<void>.delayed(Duration.zero); // Simulate async
     final userStorage = _getStorageForUser(userId);
+    final scope = userId ?? 'global';
+    print(
+        'DEBUG: HtDataInMemory.read<$T> called for ID: "$id", user: "$scope"');
+
     final item = userStorage[id];
 
     if (item == null) {
-      final scope = userId ?? 'global';
+      print(
+          'DEBUG: HtDataInMemory.read<$T> - Item ID: "$id" NOT FOUND for user: "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for user "$scope".',
       );
     }
+    print(
+        'DEBUG: HtDataInMemory.read<$T> - Item ID: "$id" FOUND for user: "$scope".');
     return SuccessApiResponse(data: item);
   }
 
@@ -130,7 +142,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     String? startAfterId,
     int? limit,
   }) async {
-    await Future<void>.delayed(Duration.zero); // Simulate async
+    // await Future<void>.delayed(Duration.zero); // Simulate async
     final userStorage = _getStorageForUser(userId);
     final allItems = userStorage.values.toList();
 
@@ -338,7 +350,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     String? startAfterId,
     int? limit,
   }) async {
-    await Future<void>.delayed(Duration.zero);
+    // await Future<void>.delayed(Duration.zero);
 
     final userJsonStorage = _getJsonStorageForUser(userId);
     final userStorage = _getStorageForUser(userId);
@@ -471,8 +483,12 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final scope = userId ?? 'global';
+    print(
+        'DEBUG: HtDataInMemory.update<$T> called for ID: "$id", user: "$scope"');
 
     if (!userStorage.containsKey(id)) {
+      print(
+          'DEBUG: HtDataInMemory.update<$T> - Item ID: "$id" NOT FOUND for update for user: "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for update for user "$scope".',
       );
@@ -480,6 +496,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     final incomingId = _getId(item);
     if (incomingId != id) {
+      print(
+          'DEBUG: HtDataInMemory.update<$T> - ID mismatch: incoming "$incomingId", path "$id" for user: "$scope".');
       throw BadRequestException(
         'Item ID ("$incomingId") does not match path ID ("$id") for "$scope".',
       );
@@ -487,8 +505,9 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     userStorage[id] = item;
     userJsonStorage[id] = _toJson(item);
-
-    await Future<void>.delayed(Duration.zero);
+    print(
+        'DEBUG: HtDataInMemory.update<$T> - Item ID: "$id" updated for user: "$scope".');
+    // await Future<void>.delayed(Duration.zero);
     return SuccessApiResponse(data: item);
   }
 
@@ -497,17 +516,23 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     required String id,
     String? userId,
   }) async {
-    await Future<void>.delayed(Duration.zero);
+    // await Future<void>.delayed(Duration.zero);
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final scope = userId ?? 'global';
+    print(
+        'DEBUG: HtDataInMemory.delete<$T> called for ID: "$id", user: "$scope"');
 
     if (!userStorage.containsKey(id)) {
+      print(
+          'DEBUG: HtDataInMemory.delete<$T> - Item ID: "$id" NOT FOUND for deletion for user: "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for deletion for user "$scope".',
       );
     }
     userStorage.remove(id);
     userJsonStorage.remove(id);
+    print(
+        'DEBUG: HtDataInMemory.delete<$T> - Item ID: "$id" deleted for user: "$scope". Current items: ${userStorage.keys.length}');
   }
 }
