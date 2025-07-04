@@ -92,12 +92,11 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final scope = userId ?? 'global';
-    print(
-        'DEBUG: HtDataInMemory.create<$T> called for ID: "$id", user: "$scope"');
+    print('[HtDataInMemory<$T>] create: id="$id", scope="$scope"');
 
     if (userStorage.containsKey(id)) {
-      print(
-          'DEBUG: HtDataInMemory.create<$T> - Item with ID "$id" already exists for user "$scope".');
+      print('[HtDataInMemory<$T>] create: FAILED - Item with ID "$id" '
+          'already exists for scope "$scope".');
       throw BadRequestException(
         'Item with ID "$id" already exists for user "$scope".',
       );
@@ -105,8 +104,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     userStorage[id] = item;
     userJsonStorage[id] = _toJson(item);
-    print(
-        'DEBUG: HtDataInMemory.create<$T> - Item ID: "$id" added for user: "$scope". Current items: ${userStorage.keys.length}');
+    print('[HtDataInMemory<$T>] create: SUCCESS - id="$id" added to scope '
+        '"$scope". Total items: ${userStorage.keys.length}');
     // await Future<void>.delayed(Duration.zero); // Simulate async
     return SuccessApiResponse(data: item);
   }
@@ -119,20 +118,17 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     // await Future<void>.delayed(Duration.zero); // Simulate async
     final userStorage = _getStorageForUser(userId);
     final scope = userId ?? 'global';
-    print(
-        'DEBUG: HtDataInMemory.read<$T> called for ID: "$id", user: "$scope"');
+    print('[HtDataInMemory<$T>] read: id="$id", scope="$scope"');
 
     final item = userStorage[id];
 
     if (item == null) {
-      print(
-          'DEBUG: HtDataInMemory.read<$T> - Item ID: "$id" NOT FOUND for user: "$scope".');
+      print('[HtDataInMemory<$T>] read: FAILED - id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for user "$scope".',
       );
     }
-    print(
-        'DEBUG: HtDataInMemory.read<$T> - Item ID: "$id" FOUND for user: "$scope".');
+    print('[HtDataInMemory<$T>] read: SUCCESS - id="$id" FOUND for scope "$scope".');
     return SuccessApiResponse(data: item);
   }
 
@@ -245,7 +241,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
   /// directly consume queries from the Flutter app's `HeadlinesFeedBloc`.
   Map<String, dynamic> _transformQuery(Map<String, dynamic> rawQuery) {
     // DEBUG: Log the raw query received by _transformQuery
-    print('DEBUG: _transformQuery received rawQuery: $rawQuery');
+    print('[HtDataInMemory<$T>] _transformQuery: received rawQuery: $rawQuery');
 
     final transformed = <String, dynamic>{};
 
@@ -261,8 +257,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     // Determine the model type at runtime to apply specific transformations.
     // This makes the generic client behave correctly for known model types.
     // Using `T == SomeType` for correct generic type comparison.
-    // DEBUG: Log the detected generic type T
-    print('DEBUG: _transformQuery detected generic type T: $T');
+    print('[HtDataInMemory<$T>] _transformQuery: detected generic type T: $T');
 
     Set<String> allowedKeys;
     String? modelNameForError;
@@ -273,20 +268,20 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
         transformed['title_contains'] = qValue;
-        // DEBUG: Applied q filter for Headline
-        print('DEBUG: Headline: Applied title_contains for q: $qValue');
+        print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
+            'title_contains for q: $qValue');
       } else {
         final categories = rawQuery['categories'] as String?;
         if (categories != null && categories.isNotEmpty) {
           transformed['category.id_in'] = categories;
-          // DEBUG: Applied categories filter for Headline
-          print('DEBUG: Headline: Applied category.id_in: $categories');
+          print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
+              'category.id_in: $categories');
         }
         final sources = rawQuery['sources'] as String?;
         if (sources != null && sources.isNotEmpty) {
           transformed['source.id_in'] = sources;
-          // DEBUG: Applied sources filter for Headline
-          print('DEBUG: Headline: Applied source.id_in: $sources');
+          print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
+              'source.id_in: $sources');
         }
       }
     } else if (T == Source) {
@@ -294,27 +289,27 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       allowedKeys = {'countries', 'sourceTypes', 'languages', 'q'};
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
-        transformed['name_contains'] = qValue;
-        // DEBUG: Applied q filter for Source
-        print('DEBUG: Source: Applied name_contains for q: $qValue');
+        transformed['name_contains'] = qValue; // Simplified for in-memory
+        print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
+            'name_contains for q: $qValue');
       } else {
         final countries = rawQuery['countries'] as String?;
         if (countries != null && countries.isNotEmpty) {
           transformed['headquarters.iso_code_in'] = countries;
-          // DEBUG: Applied countries filter for Source
-          print('DEBUG: Source: Applied headquarters.iso_code_in: $countries');
+          print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
+              'headquarters.iso_code_in: $countries');
         }
         final sourceTypes = rawQuery['sourceTypes'] as String?;
         if (sourceTypes != null && sourceTypes.isNotEmpty) {
           transformed['source_type_in'] = sourceTypes;
-          // DEBUG: Applied sourceTypes filter for Source
-          print('DEBUG: Source: Applied source_type_in: $sourceTypes');
+          print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
+              'source_type_in: $sourceTypes');
         }
         final languages = rawQuery['languages'] as String?;
         if (languages != null && languages.isNotEmpty) {
           transformed['language_in'] = languages;
-          // DEBUG: Applied languages filter for Source
-          print('DEBUG: Source: Applied language_in: $languages');
+          print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
+              'language_in: $languages');
         }
       }
     } else if (T == Category) {
@@ -323,8 +318,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
         transformed['name_contains'] = qValue;
-        // DEBUG: Applied q filter for Category
-        print('DEBUG: Category: Applied name_contains for q: $qValue');
+        print('[HtDataInMemory<$T>] _transformQuery: Category: Applied '
+            'name_contains for q: $qValue');
       }
     } else if (T == Country) {
       modelNameForError = 'country';
@@ -333,10 +328,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       if (qValue != null && qValue.isNotEmpty) {
         transformed['name_contains'] = qValue;
         transformed['iso_code_contains'] = qValue;
-        // DEBUG: Applied q filter for Country (name and iso_code)
-        print(
-          'DEBUG: Country: Applied name_contains and iso_code_contains for q: $qValue',
-        );
+        print('[HtDataInMemory<$T>] _transformQuery: Country: Applied '
+            'name_contains and iso_code_contains for q: $qValue');
       }
     } else {
       // For other models (e.g., User, UserAppSettings, AppConfig),
@@ -357,11 +350,9 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     if (modelNameForError != null) {
       for (final key in receivedKeysForValidation) {
         if (!allowedKeys.contains(key)) {
-          // DEBUG: Log invalid query parameter
-          print(
-            'DEBUG: Invalid query parameter "$key" for model "$modelNameForError". '
-            'Allowed parameters are: ${allowedKeys.join(', ')}.',
-          );
+          print('[HtDataInMemory<$T>] _transformQuery: FAILED - Invalid '
+              'query parameter "$key" for model "$modelNameForError". '
+              'Allowed: ${allowedKeys.join(', ')}.');
           throw BadRequestException(
             'Invalid query parameter "$key" for model "$modelNameForError". '
             'Allowed parameters are: ${allowedKeys.join(', ')}.',
@@ -371,7 +362,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     }
 
     // DEBUG: Log the final transformed query
-    print('DEBUG: _transformQuery returning transformed: $transformed');
+    print('[HtDataInMemory<$T>] _transformQuery: returning transformed: $transformed');
     return transformed;
   }
 
@@ -521,12 +512,10 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final scope = userId ?? 'global';
-    print(
-        'DEBUG: HtDataInMemory.update<$T> called for ID: "$id", user: "$scope"');
+    print('[HtDataInMemory<$T>] update: id="$id", scope="$scope"');
 
     if (!userStorage.containsKey(id)) {
-      print(
-          'DEBUG: HtDataInMemory.update<$T> - Item ID: "$id" NOT FOUND for update for user: "$scope".');
+      print('[HtDataInMemory<$T>] update: FAILED - id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for update for user "$scope".',
       );
@@ -534,8 +523,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     final incomingId = _getId(item);
     if (incomingId != id) {
-      print(
-          'DEBUG: HtDataInMemory.update<$T> - ID mismatch: incoming "$incomingId", path "$id" for user: "$scope".');
+      print('[HtDataInMemory<$T>] update: FAILED - ID mismatch: incoming '
+          '"$incomingId", path "$id" for scope "$scope".');
       throw BadRequestException(
         'Item ID ("$incomingId") does not match path ID ("$id") for "$scope".',
       );
@@ -543,8 +532,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     userStorage[id] = item;
     userJsonStorage[id] = _toJson(item);
-    print(
-        'DEBUG: HtDataInMemory.update<$T> - Item ID: "$id" updated for user: "$scope".');
+    print('[HtDataInMemory<$T>] update: SUCCESS - id="$id" updated for scope "$scope".');
     // await Future<void>.delayed(Duration.zero);
     return SuccessApiResponse(data: item);
   }
@@ -558,19 +546,17 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final scope = userId ?? 'global';
-    print(
-        'DEBUG: HtDataInMemory.delete<$T> called for ID: "$id", user: "$scope"');
+    print('[HtDataInMemory<$T>] delete: id="$id", scope="$scope"');
 
     if (!userStorage.containsKey(id)) {
-      print(
-          'DEBUG: HtDataInMemory.delete<$T> - Item ID: "$id" NOT FOUND for deletion for user: "$scope".');
+      print('[HtDataInMemory<$T>] delete: FAILED - id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for deletion for user "$scope".',
       );
     }
     userStorage.remove(id);
     userJsonStorage.remove(id);
-    print(
-        'DEBUG: HtDataInMemory.delete<$T> - Item ID: "$id" deleted for user: "$scope". Current items: ${userStorage.keys.length}');
+    print('[HtDataInMemory<$T>] delete: SUCCESS - id="$id" deleted for scope '
+        '"$scope". Total items: ${userStorage.keys.length}');
   }
 }
