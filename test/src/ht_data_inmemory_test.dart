@@ -404,6 +404,44 @@ void main() {
         expect(response.data.hasMore, isFalse);
         expect(response.data.cursor, isNull);
       });
+
+      group('with sorting', () {
+        test('sorts by name ascending', () async {
+          final response = await client.readAll(sortBy: 'name');
+          expect(
+            response.data.items.map((e) => e.id).toList(),
+            ['id1', 'id2'],
+          );
+        });
+
+        test('sorts by name descending', () async {
+          final response =
+              await client.readAll(sortBy: 'name', sortOrder: SortOrder.desc);
+          expect(
+            response.data.items.map((e) => e.id).toList(),
+            ['id2', 'id1'],
+          );
+        });
+
+        test('sorts by numeric count descending', () async {
+          final response =
+              await client.readAll(sortBy: 'count', sortOrder: SortOrder.desc);
+          expect(
+            response.data.items.map((e) => e.id).toList(),
+            ['id2', 'id1'],
+          );
+        });
+
+        test('sorts with null values (nulls last)', () async {
+          await client.create(item: const TestModel(id: 'id4', name: null));
+          final response = await client.readAll(sortBy: 'name');
+          // Expect 'Item One', 'Item Two', then the one with null name
+          final ids = response.data.items.map((e) => e.id).toList();
+          expect(ids.length, 3);
+          expect(ids.sublist(0, 2), containsAll(['id1', 'id2']));
+          expect(ids.last, 'id4');
+        });
+      });
     });
 
     group('readAllByQuery', () {
@@ -605,6 +643,33 @@ void main() {
         );
         expect(response.data.items.length, 1);
         expect(response.data.hasMore, isFalse);
+      });
+
+      test('filters and sorts results', () async {
+        // Add another item to make it interesting
+        await client.create(
+          item: const TestModel(
+            id: 'id_q_sort',
+            name: 'Item Alpha',
+            category: TestCategory(id: 'cat1'),
+          ),
+        );
+        // model1: name 'Item One', category 'cat1'
+        // model_q_sort: name 'Item Alpha', category 'cat1'
+
+        final response = await client.readAllByQuery(
+          {'category.id_in': 'cat1'},
+          sortBy: 'name',
+          sortOrder: SortOrder.desc,
+        );
+
+        // Should match model1 and id_q_sort, sorted by name descending
+        // 'Item One' > 'Item Alpha'
+        expect(response.data.items.length, 2);
+        expect(
+          response.data.items.map((e) => e.id).toList(),
+          ['id1', 'id_q_sort'],
+        );
       });
     });
   });

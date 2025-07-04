@@ -1,6 +1,6 @@
 # ht_data_inmemory
 
-![coverage: xx](https://img.shields.io/badge/coverage-75-green)
+![coverage: xx](https://img.shields.io/badge/coverage-85-green)
 [![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis)
 [![License: PolyForm Free Trial](https://img.shields.io/badge/License-PolyForm%20Free%20Trial-blue)](https://polyformproject.org/licenses/free-trial/1.0.0)
 
@@ -18,6 +18,7 @@ An in-memory implementation of the `HtDataClient` interface, designed primarily 
     - Case-insensitive "is one of" checks for comma-separated values using the `_in` suffix (e.g., `status_in=active,pending`). This also supports checking if any element in a list field is present in the query's list of values.
     - Exact matches for fields without suffixes.
     - AND logic for all combined filter conditions.
+- Sorting via `sortBy` and `sortOrder` parameters.
 - Pagination for `readAll` and `readAllByQuery` methods.
 
 This client is useful for:
@@ -60,6 +61,7 @@ Then run `dart pub get` or `flutter pub get`.
 - `create`, `read`, `readAll`, `update`, `delete` methods.
 - `readAllByQuery` with support for nested paths, `_in` (case-insensitive, handles lists), and `_contains` (case-insensitive) operators.
 - Pagination for `readAll` and `readAllByQuery`.
+- Sorting for `readAll` and `readAllByQuery`.
 - Throws standard exceptions from `package:ht_shared` (e.g., `NotFoundException`, `BadRequestException`).
 
 ## Usage
@@ -131,6 +133,18 @@ void main() async {
         await client.readAllByQuery({'title_contains': 'Article'});
     print('Found ${queryResponse.data.items.length} articles matching query:');
     for (var article in queryResponse.data.items) {
+      print('- ${article.title}');
+    }
+
+    // Query articles and sort them
+    SuccessApiResponse<PaginatedResponse<Article>> sortedResponse =
+        await client.readAllByQuery(
+      {'title_contains': 'Article'},
+      sortBy: 'title',
+      sortOrder: SortOrder.desc,
+    );
+    print('Found ${sortedResponse.data.items.length} sorted articles:');
+    for (var article in sortedResponse.data.items) {
       print('- ${article.title}');
     }
 
