@@ -177,6 +177,28 @@ class TestOtherModel {
   }
 }
 
+// Models for testing _transformQuery
+class TestHeadline {
+  const TestHeadline({required this.id, required this.title});
+  final String id;
+  final String title;
+  Map<String, dynamic> toJson() => {'id': id, 'title': title};
+}
+
+class TestCategoryModel {
+  const TestCategoryModel({required this.id, required this.name});
+  final String id;
+  final String name;
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+}
+
+// And their helper functions
+String getHeadlineId(TestHeadline item) => item.id;
+Map<String, dynamic> headlineToJson(TestHeadline item) => item.toJson();
+String getCategoryModelId(TestCategoryModel item) => item.id;
+Map<String, dynamic> categoryToJson(TestCategoryModel item) => item.toJson();
+
+
 void main() {
   group('HtDataInMemory', () {
     late HtDataInMemory<TestModel> client;
@@ -670,6 +692,32 @@ void main() {
           response.data.items.map((e) => e.id).toList(),
           ['id1', 'id_q_sort'],
         );
+      });
+    });
+
+    group('_transformQuery logic (via readAllByQuery)', () {
+      test('for Headline model, transforms query correctly', () async {
+        final headlineClient = HtDataInMemory<TestHeadline>(
+          getId: getHeadlineId,
+          toJson: headlineToJson,
+          initialData: [
+            const TestHeadline(id: 'h1', title: 'Breaking News'),
+            const TestHeadline(id: 'h2', title: 'Weather Report'),
+          ],
+        );
+
+        // Test 'q' parameter
+        var response =
+            await headlineClient.readAllByQuery({'q': 'Breaking'});
+        expect(response.data.items.length, 1);
+        expect(response.data.items.first.id, 'h1');
+
+        // Test 'categories' and 'sources' (mocking behavior)
+        // Since TestHeadline doesn't have these fields, we just check that
+        // the query is transformed and results in 0 matches.
+        response = await headlineClient
+            .readAllByQuery({'categories': 'tech', 'sources': 'nyt'});
+        expect(response.data.items.length, 0);
       });
     });
   });
