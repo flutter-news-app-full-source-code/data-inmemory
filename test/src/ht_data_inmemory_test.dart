@@ -719,6 +719,35 @@ void main() {
             .readAllByQuery({'categories': 'tech', 'sources': 'nyt'});
         expect(response.data.items.length, 0);
       });
+
+      test('for Source model, transforms query correctly', () async {
+        final sourceClient = HtDataInMemory<TestSource>(
+          getId: (s) => s.id,
+          toJson: (s) => s.toJson(),
+          initialData: [
+            TestSource(
+              id: 's1',
+              name: 'News Org',
+              sourceType: 'newspaper',
+              language: 'en',
+              headquarters: const TestCountry(id: 'c1', isoCode: 'us'),
+            ),
+          ],
+        );
+
+        // Test 'q'
+        var response = await sourceClient.readAllByQuery({'q': 'Org'});
+        expect(response.data.items.length, 1);
+
+        // Test other params
+        response = await sourceClient.readAllByQuery({'countries': 'us'});
+        expect(response.data.items.length, 1);
+        response =
+            await sourceClient.readAllByQuery({'sourceTypes': 'newspaper'});
+        expect(response.data.items.length, 1);
+        response = await sourceClient.readAllByQuery({'languages': 'en'});
+        expect(response.data.items.length, 1);
+      });
     });
   });
 }
