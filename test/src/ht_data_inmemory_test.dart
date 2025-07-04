@@ -725,12 +725,12 @@ void main() {
           getId: (s) => s.id,
           toJson: (s) => s.toJson(),
           initialData: [
-            TestSource(
+            const TestSource(
               id: 's1',
               name: 'News Org',
               sourceType: 'newspaper',
               language: 'en',
-              headquarters: const TestCountry(id: 'c1', isoCode: 'us'),
+              headquarters: TestCountry(id: 'c1', isoCode: 'us', name: 'United States'),
             ),
           ],
         );
@@ -747,6 +747,48 @@ void main() {
         expect(response.data.items.length, 1);
         response = await sourceClient.readAllByQuery({'languages': 'en'});
         expect(response.data.items.length, 1);
+      });
+
+      test('for Category model, transforms query correctly', () async {
+        final categoryClient = HtDataInMemory<TestCategoryModel>(
+          getId: getCategoryModelId,
+          toJson: categoryToJson,
+          initialData: [
+            const TestCategoryModel(id: 'cat1', name: 'Technology'),
+          ],
+        );
+
+        final response = await categoryClient.readAllByQuery({'q': 'Tech'});
+        expect(response.data.items.length, 1);
+      });
+
+      test('for Country model, transforms query correctly', () async {
+        final countryClient = HtDataInMemory<TestCountry>(
+          getId: (c) => c.id,
+          toJson: (c) => c.toJson(),
+          initialData: [
+            const TestCountry(id: 'c1', name: 'United States', isoCode: 'us'),
+          ],
+        );
+
+        // 'q' should match name
+        var response = await countryClient.readAllByQuery({'q': 'United'});
+        expect(response.data.items.length, 1);
+
+        // 'q' should also match isoCode
+        response = await countryClient.readAllByQuery({'q': 'us'});
+        expect(response.data.items.length, 1);
+      });
+
+      test('throws BadRequestException for invalid query parameter', () async {
+        final headlineClient = HtDataInMemory<TestHeadline>(
+          getId: getHeadlineId,
+          toJson: headlineToJson,
+        );
+        expect(
+          () => headlineClient.readAllByQuery({'invalid_param': 'true'}),
+          throwsA(isA<BadRequestException>()),
+        );
       });
     });
   });
