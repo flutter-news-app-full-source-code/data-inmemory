@@ -1,5 +1,6 @@
 import 'package:ht_data_inmemory/src/ht_data_inmemory.dart';
 import 'package:ht_shared/ht_shared.dart';
+import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 
 // Define a simple model for testing
@@ -200,6 +201,11 @@ Map<String, dynamic> topicToJson(TestTopicModel item) => item.toJson();
 
 
 void main() {
+  // Disable logging for all tests to keep the output clean.
+  setUpAll(() {
+    Logger.root.level = Level.OFF;
+  });
+
   group('HtDataInMemory', () {
     late HtDataInMemory<TestModel> client;
     const model1 = TestModel(
