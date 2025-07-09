@@ -199,7 +199,6 @@ Map<String, dynamic> headlineToJson(TestHeadline item) => item.toJson();
 String getTopicModelId(TestTopicModel item) => item.id;
 Map<String, dynamic> topicToJson(TestTopicModel item) => item.toJson();
 
-
 void main() {
   // Disable logging for all tests to keep the output clean.
   setUpAll(() {
@@ -713,8 +712,7 @@ void main() {
         );
 
         // Test 'q' parameter
-        var response =
-            await headlineClient.readAllByQuery({'q': 'Breaking'});
+        var response = await headlineClient.readAllByQuery({'q': 'Breaking'});
         expect(response.data.items.length, 1);
         expect(response.data.items.first.id, 'h1');
 
@@ -736,7 +734,8 @@ void main() {
               name: 'News Org',
               sourceType: 'newspaper',
               language: 'en',
-              headquarters: TestCountry(id: 'c1', isoCode: 'us', name: 'United States'),
+              headquarters:
+                  TestCountry(id: 'c1', isoCode: 'us', name: 'United States'),
             ),
           ],
         );

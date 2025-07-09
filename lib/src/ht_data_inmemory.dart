@@ -534,8 +534,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     _logger.fine('Update: id="$id", scope="$scope"');
 
     if (!userStorage.containsKey(id)) {
-      _logger
-          .warning('Update FAILED: id="$id" NOT FOUND for scope "$scope".');
+      _logger.warning('Update FAILED: id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for update for user "$scope".',
       );
@@ -573,8 +572,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     _logger.fine('Delete: id="$id", scope="$scope"');
 
     if (!userStorage.containsKey(id)) {
-      _logger
-          .warning('Delete FAILED: id="$id" NOT FOUND for scope "$scope".');
+      _logger.warning('Delete FAILED: id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for deletion for user "$scope".',
       );
