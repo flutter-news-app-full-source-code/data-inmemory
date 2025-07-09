@@ -105,7 +105,7 @@ class TestSource {
     return TestSource(
       id: json['id'] as String,
       name: json['name'] as String,
-      sourceType: json['source_type'] as String?,
+      sourceType: json['sourceType'] as String?,
       language: json['language'] as String?,
       headquarters: json['headquarters'] != null
           ? TestCountry.fromJson(json['headquarters'] as Map<String, dynamic>)
@@ -123,7 +123,7 @@ class TestSource {
     return {
       'id': id,
       'name': name,
-      if (sourceType != null) 'source_type': sourceType,
+      if (sourceType != null) 'sourceType': sourceType,
       if (language != null) 'language': language,
       if (headquarters != null) 'headquarters': headquarters!.toJson(),
     };
@@ -138,7 +138,7 @@ class TestCountry {
     return TestCountry(
       id: json['id'] as String,
       name: json['name'] as String,
-      isoCode: json['iso_code'] as String?,
+      isoCode: json['isoCode'] as String?,
     );
   }
 
@@ -150,7 +150,7 @@ class TestCountry {
     return {
       'id': id,
       'name': name,
-      if (isoCode != null) 'iso_code': isoCode,
+      if (isoCode != null) 'isoCode': isoCode,
     };
   }
 }
@@ -477,21 +477,21 @@ void main() {
       test('_contains filter (case-insensitive)', () async {
         // Global
         var response = await client
-            .readAllByQuery({'name_contains': 'item'}); // Matches both
+            .readAllByQuery({'nameContains': 'item'}); // Matches both
         expect(response.data.items.length, 2);
         response = await client
-            .readAllByQuery({'name_contains': 'ONE'}); // Matches model1
+            .readAllByQuery({'nameContains': 'ONE'}); // Matches model1
         expect(response.data.items.length, 1);
         expect(response.data.items.first.id, 'id1');
         response = await client.readAllByQuery(
-          {'description_contains': 'ITEM ONE'},
+          {'descriptionContains': 'ITEM ONE'},
         ); // Matches model1
         expect(response.data.items.length, 1);
         expect(response.data.items.first.id, 'id1');
 
         // User-specific
         final userResponse = await client.readAllByQuery(
-          {'name_contains': 'USER'},
+          {'nameContains': 'USER'},
           userId: 'user1',
         ); // Matches model3User1
         expect(userResponse.data.items.length, 1);
@@ -500,7 +500,7 @@ void main() {
 
       test('_in filter for top-level field (case-insensitive)', () async {
         final response =
-            await client.readAllByQuery({'id_in': 'id1,ID2'}); // model1, model2
+            await client.readAllByQuery({'idIn': 'id1,ID2'}); // model1, model2
         expect(response.data.items.length, 2);
         expect(
           response.data.items.map((e) => e.id),
@@ -511,17 +511,17 @@ void main() {
       test('_in filter for nested field (case-insensitive)', () async {
         // Global
         var response =
-            await client.readAllByQuery({'topic.id_in': 'cat1'}); // model1
+            await client.readAllByQuery({'topic.idIn': 'cat1'}); // model1
         expect(response.data.items.length, 1);
         expect(response.data.items.first.id, 'id1');
 
         response = await client
-            .readAllByQuery({'topic.id_in': 'CAT1,cat2'}); // model1, model2
+            .readAllByQuery({'topic.idIn': 'CAT1,cat2'}); // model1, model2
         expect(response.data.items.length, 2);
 
         // User-specific
         final userResponse = await client.readAllByQuery(
-          {'topic.id_in': 'CAT1'},
+          {'topic.idIn': 'CAT1'},
           userId: 'user1',
         ); // model3User1
         expect(userResponse.data.items.length, 1);
@@ -536,13 +536,13 @@ void main() {
         // model3User1 (user1) has tags: ['tagA', 'tagD']
 
         // Global: Query for items that have EITHER 'tagA' OR 'tagX' (case-insensitive)
-        var response = await client.readAllByQuery({'tags_in': 'tagA,tagX'});
+        var response = await client.readAllByQuery({'tagsIn': 'tagA,tagX'});
         // Should match model1 (has tagA)
         expect(response.data.items.length, 1, reason: 'Global: tagA or tagX');
         expect(response.data.items.map((e) => e.id), contains('id1'));
 
         // Global: Query for items that have EITHER 'tagB' OR 'tagD' (case-insensitive)
-        response = await client.readAllByQuery({'tags_in': 'tagb,TAGD'});
+        response = await client.readAllByQuery({'tagsIn': 'tagb,TAGD'});
         // Should match model1 (tagB), model2 (tagB)
         expect(response.data.items.length, 2, reason: 'Global: tagB or tagD');
         expect(
@@ -552,7 +552,7 @@ void main() {
 
         // User-specific: Query for items that have EITHER 'tagA' OR 'tagD'
         final userResponse = await client
-            .readAllByQuery({'tags_in': 'taga,tagd'}, userId: 'user1');
+            .readAllByQuery({'tagsIn': 'taga,tagd'}, userId: 'user1');
         // Should match model3User1 (has tagA and tagD)
         expect(
           userResponse.data.items.length,
@@ -562,21 +562,21 @@ void main() {
         expect(userResponse.data.items.first.id, 'id3');
 
         // Global: Query for items that have 'tagC'
-        response = await client.readAllByQuery({'tags_in': 'tagc'});
+        response = await client.readAllByQuery({'tagsIn': 'tagc'});
         // Should match model2
         expect(response.data.items.length, 1, reason: 'Global: tagC');
         expect(response.data.items.first.id, 'id2');
 
         // Global: Query for non-existent tag
-        response = await client.readAllByQuery({'tags_in': 'tagZ'});
+        response = await client.readAllByQuery({'tagsIn': 'tagZ'});
         expect(response.data.items.length, 0, reason: 'Global: tagZ');
 
         // Global: Query with empty string in list (should not cause error)
-        response = await client.readAllByQuery({'tags_in': 'tagA,,tagB'});
+        response = await client.readAllByQuery({'tagsIn': 'tagA,,tagB'});
         expect(response.data.items.length, 2, reason: 'Global: tagA,,tagB');
 
         // Global: Query with only commas (should result in no matches if not empty list)
-        response = await client.readAllByQuery({'tags_in': ',,'});
+        response = await client.readAllByQuery({'tagsIn': ',,'});
         expect(response.data.items.length, 0, reason: 'Global: ,,');
       });
 
@@ -599,10 +599,10 @@ void main() {
       });
 
       test('combined filters (AND logic)', () async {
-        // name_contains AND category.id_in
+        // nameContains AND topic.idIn
         final response = await client.readAllByQuery({
-          'name_contains': 'item', // model1, model2
-          'topic.id_in': 'cat1', // model1
+          'nameContains': 'item', // model1, model2
+          'topic.idIn': 'cat1', // model1
         }); // Should result in model1
         expect(response.data.items.length, 1);
         expect(response.data.items.first.id, 'id1');
@@ -610,18 +610,18 @@ void main() {
 
       test('query with no matches', () async {
         final response =
-            await client.readAllByQuery({'name_contains': 'NonExistent'});
+            await client.readAllByQuery({'nameContains': 'NonExistent'});
         expect(response.data.items.length, 0);
       });
 
       test('query on deeply nested field', () async {
         var response = await client
-            .readAllByQuery({'nested.deeper.finalValue_contains': 'DEEPVAL1'});
+            .readAllByQuery({'nested.deeper.finalValueContains': 'DEEPVAL1'});
         expect(response.data.items.length, 1);
         expect(response.data.items.first.id, 'id1');
 
         response = await client.readAllByQuery(
-          {'nested.deeper.finalValue_in': 'deepVal1,deepValX'},
+          {'nested.deeper.finalValueIn': 'deepVal1,deepValX'},
         );
         expect(response.data.items.length, 1);
         expect(response.data.items.first.id, 'id1');
@@ -647,21 +647,21 @@ void main() {
         // Total 5 items match 'name_contains': 'Item'
 
         var response = await client.readAllByQuery(
-          {'name_contains': 'Item', 'limit': '2'},
+          {'nameContains': 'Item', 'limit': '2'},
         );
         expect(response.data.items.length, 2);
         expect(response.data.hasMore, isTrue);
         final cursor1 = response.data.cursor;
 
         response = await client.readAllByQuery(
-          {'name_contains': 'Item', 'limit': '2', 'startAfterId': cursor1},
+          {'nameContains': 'Item', 'limit': '2', 'startAfterId': cursor1},
         );
         expect(response.data.items.length, 2);
         expect(response.data.hasMore, isTrue);
         final cursor2 = response.data.cursor;
 
         response = await client.readAllByQuery(
-          {'name_contains': 'Item', 'limit': '2', 'startAfterId': cursor2},
+          {'nameContains': 'Item', 'limit': '2', 'startAfterId': cursor2},
         );
         expect(response.data.items.length, 1);
         expect(response.data.hasMore, isFalse);
@@ -680,7 +680,7 @@ void main() {
         // model_q_sort: name 'Item Alpha', topic 'cat1'
 
         final response = await client.readAllByQuery(
-          {'topic.id_in': 'cat1'},
+          {'topic.idIn': 'cat1'},
           sortBy: 'name',
           sortOrder: SortOrder.desc,
         );
