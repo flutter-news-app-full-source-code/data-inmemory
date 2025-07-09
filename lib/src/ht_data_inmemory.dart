@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:logging/logging.dart';
 import 'package:ht_data_client/ht_data_client.dart';
 import 'package:ht_shared/ht_shared.dart';
+import 'package:logging/logging.dart';
 
 /// {@template ht_data_inmemory}
 /// An in-memory implementation of [HtDataClient] for testing or local
@@ -340,7 +340,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
         transformed['nameContains'] = qValue;
         transformed['isoCodeContains'] = qValue;
         _logger.finer(
-            'Country: Applied nameContains and isoCodeContains for q: $qValue');
+            'Country: Applied nameContains and isoCodeContains for q: $qValue',);
       }
     } else {
       // For other models (e.g., User, UserAppSettings, AppConfig),

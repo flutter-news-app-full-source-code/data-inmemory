@@ -460,7 +460,7 @@ void main() {
         });
 
         test('sorts with null values (nulls last)', () async {
-          await client.create(item: const TestModel(id: 'id4', name: null));
+          await client.create(item: const TestModel(id: 'id4'));
           final response = await client.readAll(sortBy: 'name');
           // Expect 'Item One', 'Item Two', then the one with null name
           final ids = response.data.items.map((e) => e.id).toList();
