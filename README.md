@@ -1,6 +1,6 @@
 # ht_data_inmemory
 
-![coverage: xx](https://img.shields.io/badge/coverage-85-green)
+![coverage: xx%](https://img.shields.io/badge/coverage-97-green)
 [![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis)
 [![License: PolyForm Free Trial](https://img.shields.io/badge/License-PolyForm%20Free%20Trial-blue)](https://polyformproject.org/licenses/free-trial/1.0.0)
 
@@ -14,10 +14,10 @@ An in-memory implementation of the `HtDataClient` interface, designed primarily 
 - Global data: Operations can target data not associated with any user.
 - Basic querying capabilities via `readAllByQuery`, including:
     - Filtering on nested object properties using dot-notation (e.g., `category.id`).
-    - Case-insensitive "contains" text search on fields using the `_contains` suffix (e.g., `name_contains`).
-    - Case-insensitive "is one of" checks for comma-separated values using the `_in` suffix (e.g., `status_in=active,pending`). This also supports checking if any element in a list field is present in the query's list of values.
+    - Case-insensitive "contains" text search on fields using the `Contains` suffix (e.g., `nameContains`).
+    - Case-insensitive "is one of" checks for comma-separated values using the `In` suffix (e.g., `statusIn=active,pending`). This also supports checking if any element in a list field is present in the query's list of values.
     - Exact matches for fields without suffixes.
-    - AND logic for all combined filter conditions.
+    - AND logic for exact/`In` filters, OR logic for `Contains` filters.
 - Sorting via `sortBy` and `sortOrder` parameters.
 - Pagination for `readAll` and `readAllByQuery` methods.
 
@@ -130,7 +130,7 @@ void main() async {
 
     // Query articles
     SuccessApiResponse<PaginatedResponse<Article>> queryResponse =
-        await client.readAllByQuery({'title_contains': 'Article'});
+        await client.readAllByQuery({'titleContains': 'Article'});
     print('Found ${queryResponse.data.items.length} articles matching query:');
     for (var article in queryResponse.data.items) {
       print('- ${article.title}');
@@ -139,7 +139,7 @@ void main() async {
     // Query articles and sort them
     SuccessApiResponse<PaginatedResponse<Article>> sortedResponse =
         await client.readAllByQuery(
-      {'title_contains': 'Article'},
+      {'titleContains': 'Article'},
       sortBy: 'title',
       sortOrder: SortOrder.desc,
     );
