@@ -287,21 +287,21 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       allowedKeys = {'topics', 'sources', 'q'};
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
-        transformed['title_contains'] = qValue;
+        transformed['titleContains'] = qValue;
         print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
-            'title_contains for q: $qValue');
+            'titleContains for q: $qValue');
       } else {
         final topics = rawQuery['topics'] as String?;
         if (topics != null && topics.isNotEmpty) {
-          transformed['topic.id_in'] = topics;
+          transformed['topic.idIn'] = topics;
           print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
-              'topic.id_in: $topics');
+              'topic.idIn: $topics');
         }
         final sources = rawQuery['sources'] as String?;
         if (sources != null && sources.isNotEmpty) {
-          transformed['source.id_in'] = sources;
+          transformed['source.idIn'] = sources;
           print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
-              'source.id_in: $sources');
+              'source.idIn: $sources');
         }
       }
     } else if (T == Source) {
@@ -309,27 +309,27 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       allowedKeys = {'countries', 'sourceTypes', 'languages', 'q'};
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
-        transformed['name_contains'] = qValue; // Simplified for in-memory
+        transformed['nameContains'] = qValue; // Simplified for in-memory
         print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
-            'name_contains for q: $qValue');
+            'nameContains for q: $qValue');
       } else {
         final countries = rawQuery['countries'] as String?;
         if (countries != null && countries.isNotEmpty) {
-          transformed['headquarters.iso_code_in'] = countries;
+          transformed['headquarters.isoCodeIn'] = countries;
           print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
-              'headquarters.iso_code_in: $countries');
+              'headquarters.isoCodeIn: $countries');
         }
         final sourceTypes = rawQuery['sourceTypes'] as String?;
         if (sourceTypes != null && sourceTypes.isNotEmpty) {
-          transformed['sourceType_in'] = sourceTypes;
+          transformed['sourceTypeIn'] = sourceTypes;
           print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
-              'sourceType_in: $sourceTypes');
+              'sourceTypeIn: $sourceTypes');
         }
         final languages = rawQuery['languages'] as String?;
         if (languages != null && languages.isNotEmpty) {
-          transformed['language_in'] = languages;
+          transformed['languageIn'] = languages;
           print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
-              'language_in: $languages');
+              'languageIn: $languages');
         }
       }
     } else if (T == Topic) {
@@ -337,19 +337,19 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       allowedKeys = {'q'};
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
-        transformed['name_contains'] = qValue;
+        transformed['nameContains'] = qValue;
         print('[HtDataInMemory<$T>] _transformQuery: Topic: Applied '
-            'name_contains for q: $qValue');
+            'nameContains for q: $qValue');
       }
     } else if (T == Country) {
       modelNameForError = 'country';
       allowedKeys = {'q'};
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
-        transformed['name_contains'] = qValue;
-        transformed['iso_code_contains'] = qValue;
+        transformed['nameContains'] = qValue;
+        transformed['isoCodeContains'] = qValue;
         print('[HtDataInMemory<$T>] _transformQuery: Country: Applied '
-            'name_contains and iso_code_contains for q: $qValue');
+            'nameContains and isoCodeContains for q: $qValue');
       }
     } else {
       // For other models (e.g., User, UserAppSettings, AppConfig),
@@ -424,7 +424,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
       // Use transformedQuery for filtering
       transformedQuery.forEach((key, value) {
-        if (key.endsWith('_contains')) {
+        if (key.endsWith('Contains')) {
           containsFilters.add(MapEntry(key, value as String));
         } else if (key != 'startAfterId' && key != 'limit') {
           // Exclude pagination params from otherFilters
@@ -440,8 +440,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
           var actualPath = filterKey;
           var operation = 'exact';
 
-          if (filterKey.endsWith('_in')) {
-            actualPath = filterKey.substring(0, filterKey.length - 3);
+          if (filterKey.endsWith('In')) {
+            actualPath = filterKey.substring(0, filterKey.length - 2);
             operation = 'in';
           }
 
@@ -493,7 +493,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
         for (final entry in containsFilters) {
           final filterKey = entry.key;
           final filterValueStr = entry.value;
-          final actualPath = filterKey.substring(0, filterKey.length - 9);
+          final actualPath = filterKey.substring(0, filterKey.length - 8);
           final dynamic actualItemValue = _getNestedValue(jsonItem, actualPath);
 
           if (actualItemValue != null &&
