@@ -1,8 +1,7 @@
-// ignore_for_file: avoid_print
-
 import 'dart:async';
 import 'dart:math';
 
+import 'package:logging/logging.dart';
 import 'package:ht_data_client/ht_data_client.dart';
 import 'package:ht_shared/ht_shared.dart';
 
@@ -38,8 +37,10 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     required ToJson<T> toJson,
     required String Function(T item) getId,
     List<T>? initialData,
+    Logger? logger,
   })  : _toJson = toJson,
-        _getId = getId {
+        _getId = getId,
+        _logger = logger ?? Logger('HtDataInMemory<$T>') {
     // Initialize global storage once
     _userScopedStorage.putIfAbsent(_globalDataKey, () => <String, T>{});
     _userScopedJsonStorage.putIfAbsent(
@@ -61,6 +62,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
   final ToJson<T> _toJson;
   final String Function(T item) _getId;
+  final Logger _logger;
 
   static const String _globalDataKey = '__global_data__';
 
@@ -92,11 +94,12 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final scope = userId ?? 'global';
-    print('[HtDataInMemory<$T>] create: id="$id", scope="$scope"');
+    _logger.fine('Create: id="$id", scope="$scope"');
 
     if (userStorage.containsKey(id)) {
-      print('[HtDataInMemory<$T>] create: FAILED - Item with ID "$id" '
-          'already exists for scope "$scope".');
+      _logger.warning(
+        'Create FAILED: Item with ID "$id" already exists for scope "$scope".',
+      );
       throw BadRequestException(
         'Item with ID "$id" already exists for user "$scope".',
       );
@@ -104,9 +107,9 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     userStorage[id] = item;
     userJsonStorage[id] = _toJson(item);
-    print('[HtDataInMemory<$T>] create: SUCCESS - id="$id" added to scope '
-        '"$scope". Total items: ${userStorage.keys.length}');
-    // await Future<void>.delayed(Duration.zero); // Simulate async
+    _logger.info(
+      'Create SUCCESS: id="$id" added to scope "$scope". Total items: ${userStorage.length}',
+    );
     return SuccessApiResponse(
       data: item,
       metadata: ResponseMetadata(
@@ -121,22 +124,19 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     required String id,
     String? userId,
   }) async {
-    // await Future<void>.delayed(Duration.zero); // Simulate async
     final userStorage = _getStorageForUser(userId);
     final scope = userId ?? 'global';
-    print('[HtDataInMemory<$T>] read: id="$id", scope="$scope"');
+    _logger.fine('Read: id="$id", scope="$scope"');
 
     final item = userStorage[id];
 
     if (item == null) {
-      print(
-          '[HtDataInMemory<$T>] read: FAILED - id="$id" NOT FOUND for scope "$scope".');
+      _logger.warning('Read FAILED: id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for user "$scope".',
       );
     }
-    print(
-        '[HtDataInMemory<$T>] read: SUCCESS - id="$id" FOUND for scope "$scope".');
+    _logger.info('Read SUCCESS: id="$id" FOUND for scope "$scope".');
     return SuccessApiResponse(
       data: item,
       metadata: ResponseMetadata(
@@ -154,7 +154,6 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     String? sortBy,
     SortOrder? sortOrder,
   }) async {
-    // await Future<void>.delayed(Duration.zero); // Simulate async
     final userStorage = _getStorageForUser(userId);
     final allItems = userStorage.values.toList();
 
@@ -260,8 +259,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
   /// backend's data route handlers, allowing the `HtDataInMemoryClient` to
   /// directly consume queries from the Flutter app's `HeadlinesFeedBloc`.
   Map<String, dynamic> _transformQuery(Map<String, dynamic> rawQuery) {
-    // DEBUG: Log the raw query received by _transformQuery
-    print('[HtDataInMemory<$T>] _transformQuery: received rawQuery: $rawQuery');
+    _logger.finer('Transforming raw query: $rawQuery');
 
     final transformed = <String, dynamic>{};
 
@@ -278,7 +276,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     // This makes the generic client behave correctly for known model types.
     // Using `T.toString()` for flexible type comparison in tests.
     final typeName = T.toString();
-    print('[HtDataInMemory<$T>] _transformQuery: detected generic type T: $typeName');
+    _logger.finer('Detected generic type T: $typeName');
 
     Set<String> allowedKeys;
     String? modelNameForError;
@@ -288,21 +286,18 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       allowedKeys = {'topics', 'sources', 'q'};
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
-        transformed['titleContains'] = qValue;
-        print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
-            'titleContains for q: $qValue');
+        transformed['titleContains'] = qValue; // Simplified for in-memory
+        _logger.finer('Headline: Applied titleContains for q: $qValue');
       } else {
         final topics = rawQuery['topics'] as String?;
         if (topics != null && topics.isNotEmpty) {
           transformed['topic.idIn'] = topics;
-          print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
-              'topic.idIn: $topics');
+          _logger.finer('Headline: Applied topic.idIn: $topics');
         }
         final sources = rawQuery['sources'] as String?;
         if (sources != null && sources.isNotEmpty) {
           transformed['source.idIn'] = sources;
-          print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
-              'source.idIn: $sources');
+          _logger.finer('Headline: Applied source.idIn: $sources');
         }
       }
     } else if (typeName == 'Source' || typeName == 'TestSource') {
@@ -311,26 +306,22 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
         transformed['nameContains'] = qValue; // Simplified for in-memory
-        print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
-            'nameContains for q: $qValue');
+        _logger.finer('Source: Applied nameContains for q: $qValue');
       } else {
         final countries = rawQuery['countries'] as String?;
         if (countries != null && countries.isNotEmpty) {
           transformed['headquarters.isoCodeIn'] = countries;
-          print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
-              'headquarters.isoCodeIn: $countries');
+          _logger.finer('Source: Applied headquarters.isoCodeIn: $countries');
         }
         final sourceTypes = rawQuery['sourceTypes'] as String?;
         if (sourceTypes != null && sourceTypes.isNotEmpty) {
           transformed['sourceTypeIn'] = sourceTypes;
-          print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
-              'sourceTypeIn: $sourceTypes');
+          _logger.finer('Source: Applied sourceTypeIn: $sourceTypes');
         }
         final languages = rawQuery['languages'] as String?;
         if (languages != null && languages.isNotEmpty) {
           transformed['languageIn'] = languages;
-          print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
-              'languageIn: $languages');
+          _logger.finer('Source: Applied languageIn: $languages');
         }
       }
     } else if (typeName == 'Topic' || typeName == 'TestTopicModel') {
@@ -339,8 +330,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
         transformed['nameContains'] = qValue;
-        print('[HtDataInMemory<$T>] _transformQuery: Topic: Applied '
-            'nameContains for q: $qValue');
+        _logger.finer('Topic: Applied nameContains for q: $qValue');
       }
     } else if (typeName == 'Country' || typeName == 'TestCountry') {
       modelNameForError = 'country';
@@ -349,8 +339,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       if (qValue != null && qValue.isNotEmpty) {
         transformed['nameContains'] = qValue;
         transformed['isoCodeContains'] = qValue;
-        print('[HtDataInMemory<$T>] _transformQuery: Country: Applied '
-            'nameContains and isoCodeContains for q: $qValue');
+        _logger.finer(
+            'Country: Applied nameContains and isoCodeContains for q: $qValue');
       }
     } else {
       // For other models (e.g., User, UserAppSettings, AppConfig),
@@ -371,9 +361,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     if (modelNameForError != null) {
       for (final key in receivedKeysForValidation) {
         if (!allowedKeys.contains(key)) {
-          print('[HtDataInMemory<$T>] _transformQuery: FAILED - Invalid '
-              'query parameter "$key" for model "$modelNameForError". '
-              'Allowed: ${allowedKeys.join(', ')}.');
+          _logger.severe('Transform FAILED: Invalid query parameter "$key" '
+              'for model "$modelNameForError". Allowed: ${allowedKeys.join(', ')}.');
           throw BadRequestException(
             'Invalid query parameter "$key" for model "$modelNameForError". '
             'Allowed parameters are: ${allowedKeys.join(', ')}.',
@@ -382,9 +371,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       }
     }
 
-    // DEBUG: Log the final transformed query
-    print(
-        '[HtDataInMemory<$T>] _transformQuery: returning transformed: $transformed');
+    _logger.finer('Returning transformed query: $transformed');
     return transformed;
   }
 
@@ -397,8 +384,6 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     String? sortBy,
     SortOrder? sortOrder,
   }) async {
-    // await Future<void>.delayed(Duration.zero);
-
     final userJsonStorage = _getJsonStorageForUser(userId);
     final userStorage = _getStorageForUser(userId);
 
@@ -546,11 +531,11 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final scope = userId ?? 'global';
-    print('[HtDataInMemory<$T>] update: id="$id", scope="$scope"');
+    _logger.fine('Update: id="$id", scope="$scope"');
 
     if (!userStorage.containsKey(id)) {
-      print(
-          '[HtDataInMemory<$T>] update: FAILED - id="$id" NOT FOUND for scope "$scope".');
+      _logger
+          .warning('Update FAILED: id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for update for user "$scope".',
       );
@@ -558,7 +543,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     final incomingId = _getId(item);
     if (incomingId != id) {
-      print('[HtDataInMemory<$T>] update: FAILED - ID mismatch: incoming '
+      _logger.warning('Update FAILED: ID mismatch: incoming '
           '"$incomingId", path "$id" for scope "$scope".');
       throw BadRequestException(
         'Item ID ("$incomingId") does not match path ID ("$id") for "$scope".',
@@ -567,9 +552,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     userStorage[id] = item;
     userJsonStorage[id] = _toJson(item);
-    print(
-        '[HtDataInMemory<$T>] update: SUCCESS - id="$id" updated for scope "$scope".');
-    // await Future<void>.delayed(Duration.zero);
+    _logger.info('Update SUCCESS: id="$id" updated for scope "$scope".');
     return SuccessApiResponse(
       data: item,
       metadata: ResponseMetadata(
@@ -584,22 +567,21 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     required String id,
     String? userId,
   }) async {
-    // await Future<void>.delayed(Duration.zero);
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final scope = userId ?? 'global';
-    print('[HtDataInMemory<$T>] delete: id="$id", scope="$scope"');
+    _logger.fine('Delete: id="$id", scope="$scope"');
 
     if (!userStorage.containsKey(id)) {
-      print(
-          '[HtDataInMemory<$T>] delete: FAILED - id="$id" NOT FOUND for scope "$scope".');
+      _logger
+          .warning('Delete FAILED: id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for deletion for user "$scope".',
       );
     }
     userStorage.remove(id);
     userJsonStorage.remove(id);
-    print('[HtDataInMemory<$T>] delete: SUCCESS - id="$id" deleted for scope '
-        '"$scope". Total items: ${userStorage.keys.length}');
+    _logger.info('Delete SUCCESS: id="$id" deleted for scope "$scope". '
+        'Total items: ${userStorage.length}');
   }
 }
