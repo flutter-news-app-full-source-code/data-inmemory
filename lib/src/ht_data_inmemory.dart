@@ -107,7 +107,13 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     print('[HtDataInMemory<$T>] create: SUCCESS - id="$id" added to scope '
         '"$scope". Total items: ${userStorage.keys.length}');
     // await Future<void>.delayed(Duration.zero); // Simulate async
-    return SuccessApiResponse(data: item);
+    return SuccessApiResponse(
+      data: item,
+      metadata: ResponseMetadata(
+        requestId: 'in-memory-req-${DateTime.now().toIso8601String()}',
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   @override
@@ -123,13 +129,21 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     final item = userStorage[id];
 
     if (item == null) {
-      print('[HtDataInMemory<$T>] read: FAILED - id="$id" NOT FOUND for scope "$scope".');
+      print(
+          '[HtDataInMemory<$T>] read: FAILED - id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for user "$scope".',
       );
     }
-    print('[HtDataInMemory<$T>] read: SUCCESS - id="$id" FOUND for scope "$scope".');
-    return SuccessApiResponse(data: item);
+    print(
+        '[HtDataInMemory<$T>] read: SUCCESS - id="$id" FOUND for scope "$scope".');
+    return SuccessApiResponse(
+      data: item,
+      metadata: ResponseMetadata(
+        requestId: 'in-memory-req-${DateTime.now().toIso8601String()}',
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   @override
@@ -153,7 +167,13 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       startAfterId,
       limit,
     );
-    return SuccessApiResponse(data: paginatedResponse);
+    return SuccessApiResponse(
+      data: paginatedResponse,
+      metadata: ResponseMetadata(
+        requestId: 'in-memory-req-${DateTime.now().toIso8601String()}',
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   dynamic _getNestedValue(Map<String, dynamic> item, String dotPath) {
@@ -264,18 +284,18 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     if (T == Headline) {
       modelNameForError = 'headline';
-      allowedKeys = {'categories', 'sources', 'q'};
+      allowedKeys = {'topics', 'sources', 'q'};
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
         transformed['title_contains'] = qValue;
         print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
             'title_contains for q: $qValue');
       } else {
-        final categories = rawQuery['categories'] as String?;
-        if (categories != null && categories.isNotEmpty) {
-          transformed['category.id_in'] = categories;
+        final topics = rawQuery['topics'] as String?;
+        if (topics != null && topics.isNotEmpty) {
+          transformed['topic.id_in'] = topics;
           print('[HtDataInMemory<$T>] _transformQuery: Headline: Applied '
-              'category.id_in: $categories');
+              'topic.id_in: $topics');
         }
         final sources = rawQuery['sources'] as String?;
         if (sources != null && sources.isNotEmpty) {
@@ -301,9 +321,9 @@ class HtDataInMemory<T> implements HtDataClient<T> {
         }
         final sourceTypes = rawQuery['sourceTypes'] as String?;
         if (sourceTypes != null && sourceTypes.isNotEmpty) {
-          transformed['source_type_in'] = sourceTypes;
+          transformed['sourceType_in'] = sourceTypes;
           print('[HtDataInMemory<$T>] _transformQuery: Source: Applied '
-              'source_type_in: $sourceTypes');
+              'sourceType_in: $sourceTypes');
         }
         final languages = rawQuery['languages'] as String?;
         if (languages != null && languages.isNotEmpty) {
@@ -312,13 +332,13 @@ class HtDataInMemory<T> implements HtDataClient<T> {
               'language_in: $languages');
         }
       }
-    } else if (T == Category) {
-      modelNameForError = 'category';
+    } else if (T == Topic) {
+      modelNameForError = 'topic';
       allowedKeys = {'q'};
       final qValue = rawQuery['q'] as String?;
       if (qValue != null && qValue.isNotEmpty) {
         transformed['name_contains'] = qValue;
-        print('[HtDataInMemory<$T>] _transformQuery: Category: Applied '
+        print('[HtDataInMemory<$T>] _transformQuery: Topic: Applied '
             'name_contains for q: $qValue');
       }
     } else if (T == Country) {
@@ -362,7 +382,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     }
 
     // DEBUG: Log the final transformed query
-    print('[HtDataInMemory<$T>] _transformQuery: returning transformed: $transformed');
+    print(
+        '[HtDataInMemory<$T>] _transformQuery: returning transformed: $transformed');
     return transformed;
   }
 
@@ -387,7 +408,13 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       final allItems = userStorage.values.toList();
       final paginatedResp =
           _createPaginatedResponse(allItems, startAfterId, limit);
-      return SuccessApiResponse(data: paginatedResp);
+      return SuccessApiResponse(
+        data: paginatedResp,
+        metadata: ResponseMetadata(
+          requestId: 'in-memory-req-${DateTime.now().toIso8601String()}',
+          timestamp: DateTime.now(),
+        ),
+      );
     }
 
     final matchedItems = <T>[];
@@ -500,7 +527,13 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     final paginatedResponse =
         _createPaginatedResponse(matchedItems, finalStartAfterId, finalLimit);
-    return SuccessApiResponse(data: paginatedResponse);
+    return SuccessApiResponse(
+      data: paginatedResponse,
+      metadata: ResponseMetadata(
+        requestId: 'in-memory-req-${DateTime.now().toIso8601String()}',
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   @override
@@ -515,7 +548,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     print('[HtDataInMemory<$T>] update: id="$id", scope="$scope"');
 
     if (!userStorage.containsKey(id)) {
-      print('[HtDataInMemory<$T>] update: FAILED - id="$id" NOT FOUND for scope "$scope".');
+      print(
+          '[HtDataInMemory<$T>] update: FAILED - id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for update for user "$scope".',
       );
@@ -532,9 +566,16 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     userStorage[id] = item;
     userJsonStorage[id] = _toJson(item);
-    print('[HtDataInMemory<$T>] update: SUCCESS - id="$id" updated for scope "$scope".');
+    print(
+        '[HtDataInMemory<$T>] update: SUCCESS - id="$id" updated for scope "$scope".');
     // await Future<void>.delayed(Duration.zero);
-    return SuccessApiResponse(data: item);
+    return SuccessApiResponse(
+      data: item,
+      metadata: ResponseMetadata(
+        requestId: 'in-memory-req-${DateTime.now().toIso8601String()}',
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   @override
@@ -549,7 +590,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     print('[HtDataInMemory<$T>] delete: id="$id", scope="$scope"');
 
     if (!userStorage.containsKey(id)) {
-      print('[HtDataInMemory<$T>] delete: FAILED - id="$id" NOT FOUND for scope "$scope".');
+      print(
+          '[HtDataInMemory<$T>] delete: FAILED - id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for deletion for user "$scope".',
       );
