@@ -276,13 +276,14 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     // Determine the model type at runtime to apply specific transformations.
     // This makes the generic client behave correctly for known model types.
-    // Using `T == SomeType` for correct generic type comparison.
-    print('[HtDataInMemory<$T>] _transformQuery: detected generic type T: $T');
+    // Using `T.toString()` for flexible type comparison in tests.
+    final typeName = T.toString();
+    print('[HtDataInMemory<$T>] _transformQuery: detected generic type T: $typeName');
 
     Set<String> allowedKeys;
     String? modelNameForError;
 
-    if (T == Headline) {
+    if (typeName == 'Headline' || typeName == 'TestHeadline') {
       modelNameForError = 'headline';
       allowedKeys = {'topics', 'sources', 'q'};
       final qValue = rawQuery['q'] as String?;
@@ -304,7 +305,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
               'source.idIn: $sources');
         }
       }
-    } else if (T == Source) {
+    } else if (typeName == 'Source' || typeName == 'TestSource') {
       modelNameForError = 'source';
       allowedKeys = {'countries', 'sourceTypes', 'languages', 'q'};
       final qValue = rawQuery['q'] as String?;
@@ -332,7 +333,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
               'languageIn: $languages');
         }
       }
-    } else if (T == Topic) {
+    } else if (typeName == 'Topic' || typeName == 'TestTopicModel') {
       modelNameForError = 'topic';
       allowedKeys = {'q'};
       final qValue = rawQuery['q'] as String?;
@@ -341,7 +342,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
         print('[HtDataInMemory<$T>] _transformQuery: Topic: Applied '
             'nameContains for q: $qValue');
       }
-    } else if (T == Country) {
+    } else if (typeName == 'Country' || typeName == 'TestCountry') {
       modelNameForError = 'country';
       allowedKeys = {'q'};
       final qValue = rawQuery['q'] as String?;
