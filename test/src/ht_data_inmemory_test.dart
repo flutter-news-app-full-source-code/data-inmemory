@@ -9,7 +9,7 @@ class TestModel {
     this.name,
     this.description,
     this.count,
-    this.category,
+    this.topic,
     this.tags,
     this.nested,
   });
@@ -20,8 +20,8 @@ class TestModel {
       name: json['name'] as String?,
       description: json['description'] as String?,
       count: json['count'] as int?,
-      category: json['category'] != null
-          ? TestCategory.fromJson(json['category'] as Map<String, dynamic>)
+      topic: json['topic'] != null
+          ? TestTopic.fromJson(json['topic'] as Map<String, dynamic>)
           : null,
       tags: (json['tags'] as List<dynamic>?)?.cast<String>(),
       nested: json['nested'] != null
@@ -34,7 +34,7 @@ class TestModel {
   final String? name;
   final String? description;
   final int? count;
-  final TestCategory? category;
+  final TestTopic? topic;
   final List<String>? tags;
   final TestNested? nested;
 
@@ -44,7 +44,7 @@ class TestModel {
       if (name != null) 'name': name,
       if (description != null) 'description': description,
       if (count != null) 'count': count,
-      if (category != null) 'category': category!.toJson(),
+      if (topic != null) 'topic': topic!.toJson(),
       if (tags != null) 'tags': tags,
       if (nested != null) 'nested': nested!.toJson(),
     };
@@ -53,11 +53,11 @@ class TestModel {
   // Removed Equatable props
 }
 
-class TestCategory {
-  const TestCategory({required this.id, this.name});
+class TestTopic {
+  const TestTopic({required this.id, this.name});
 
-  factory TestCategory.fromJson(Map<String, dynamic> json) =>
-      TestCategory(id: json['id'] as String, name: json['name'] as String?);
+  factory TestTopic.fromJson(Map<String, dynamic> json) =>
+      TestTopic(id: json['id'] as String, name: json['name'] as String?);
   final String id;
   final String? name;
   Map<String, dynamic> toJson() => {'id': id, if (name != null) 'name': name};
@@ -185,8 +185,8 @@ class TestHeadline {
   Map<String, dynamic> toJson() => {'id': id, 'title': title};
 }
 
-class TestCategoryModel {
-  const TestCategoryModel({required this.id, required this.name});
+class TestTopicModel {
+  const TestTopicModel({required this.id, required this.name});
   final String id;
   final String name;
   Map<String, dynamic> toJson() => {'id': id, 'name': name};
@@ -195,8 +195,8 @@ class TestCategoryModel {
 // And their helper functions
 String getHeadlineId(TestHeadline item) => item.id;
 Map<String, dynamic> headlineToJson(TestHeadline item) => item.toJson();
-String getCategoryModelId(TestCategoryModel item) => item.id;
-Map<String, dynamic> categoryToJson(TestCategoryModel item) => item.toJson();
+String getTopicModelId(TestTopicModel item) => item.id;
+Map<String, dynamic> topicToJson(TestTopicModel item) => item.toJson();
 
 
 void main() {
@@ -207,7 +207,7 @@ void main() {
       name: 'Item One',
       description: 'Description for item one',
       count: 10,
-      category: TestCategory(id: 'cat1', name: 'Category A'),
+      topic: TestTopic(id: 'cat1', name: 'Topic A'),
       tags: ['tagA', 'tagB'],
       nested: TestNested(
         value: 'nestedVal1',
@@ -219,7 +219,7 @@ void main() {
       name: 'Item Two',
       description: 'Another item here (two)',
       count: 20,
-      category: TestCategory(id: 'cat2', name: 'Category B'),
+      topic: TestTopic(id: 'cat2', name: 'Topic B'),
       tags: ['tagB', 'tagC'],
       nested: TestNested(
         value: 'nestedVal2',
@@ -231,7 +231,7 @@ void main() {
       name: 'User One Item',
       description: 'Specific to user1',
       count: 30,
-      category: TestCategory(id: 'cat1'),
+      topic: TestTopic(id: 'cat1'),
       tags: ['tagA', 'tagD'],
       nested: TestNested(
         value: 'nestedVal3User1',
@@ -300,7 +300,7 @@ void main() {
           name: 'Updated Item One',
           description: model1.description,
           count: model1.count,
-          category: model1.category,
+          topic: model1.topic,
         );
         final response = await client.update(id: 'id1', item: updatedItem);
         expect(response.data.name, 'Updated Item One');
@@ -511,17 +511,17 @@ void main() {
       test('_in filter for nested field (case-insensitive)', () async {
         // Global
         var response =
-            await client.readAllByQuery({'category.id_in': 'cat1'}); // model1
+            await client.readAllByQuery({'topic.id_in': 'cat1'}); // model1
         expect(response.data.items.length, 1);
         expect(response.data.items.first.id, 'id1');
 
         response = await client
-            .readAllByQuery({'category.id_in': 'CAT1,cat2'}); // model1, model2
+            .readAllByQuery({'topic.id_in': 'CAT1,cat2'}); // model1, model2
         expect(response.data.items.length, 2);
 
         // User-specific
         final userResponse = await client.readAllByQuery(
-          {'category.id_in': 'CAT1'},
+          {'topic.id_in': 'CAT1'},
           userId: 'user1',
         ); // model3User1
         expect(userResponse.data.items.length, 1);
@@ -602,7 +602,7 @@ void main() {
         // name_contains AND category.id_in
         final response = await client.readAllByQuery({
           'name_contains': 'item', // model1, model2
-          'category.id_in': 'cat1', // model1
+          'topic.id_in': 'cat1', // model1
         }); // Should result in model1
         expect(response.data.items.length, 1);
         expect(response.data.items.first.id, 'id1');
@@ -673,14 +673,14 @@ void main() {
           item: const TestModel(
             id: 'id_q_sort',
             name: 'Item Alpha',
-            category: TestCategory(id: 'cat1'),
+            topic: TestTopic(id: 'cat1'),
           ),
         );
-        // model1: name 'Item One', category 'cat1'
-        // model_q_sort: name 'Item Alpha', category 'cat1'
+        // model1: name 'Item One', topic 'cat1'
+        // model_q_sort: name 'Item Alpha', topic 'cat1'
 
         final response = await client.readAllByQuery(
-          {'category.id_in': 'cat1'},
+          {'topic.id_in': 'cat1'},
           sortBy: 'name',
           sortOrder: SortOrder.desc,
         );
@@ -712,11 +712,11 @@ void main() {
         expect(response.data.items.length, 1);
         expect(response.data.items.first.id, 'h1');
 
-        // Test 'categories' and 'sources' (mocking behavior)
+        // Test 'topics' and 'sources' (mocking behavior)
         // Since TestHeadline doesn't have these fields, we just check that
         // the query is transformed and results in 0 matches.
         response = await headlineClient
-            .readAllByQuery({'categories': 'tech', 'sources': 'nyt'});
+            .readAllByQuery({'topics': 'tech', 'sources': 'nyt'});
         expect(response.data.items.length, 0);
       });
 
@@ -749,16 +749,16 @@ void main() {
         expect(response.data.items.length, 1);
       });
 
-      test('for Category model, transforms query correctly', () async {
-        final categoryClient = HtDataInMemory<TestCategoryModel>(
-          getId: getCategoryModelId,
-          toJson: categoryToJson,
+      test('for Topic model, transforms query correctly', () async {
+        final topicClient = HtDataInMemory<TestTopicModel>(
+          getId: getTopicModelId,
+          toJson: topicToJson,
           initialData: [
-            const TestCategoryModel(id: 'cat1', name: 'Technology'),
+            const TestTopicModel(id: 'cat1', name: 'Technology'),
           ],
         );
 
-        final response = await categoryClient.readAllByQuery({'q': 'Tech'});
+        final response = await topicClient.readAllByQuery({'q': 'Tech'});
         expect(response.data.items.length, 1);
       });
 
