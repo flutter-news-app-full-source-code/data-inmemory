@@ -490,6 +490,62 @@ void main() {
           expect(response.data.items.length, 9);
           expect(response.data.items.every((a) => a.title != 'Article 5'), isTrue);
         });
+
+        test('should filter using \$gte (>=) operator on a double', () async {
+          // Arrange
+          final filter = {
+            'rating': {r'$gte': 10.0},
+          }; // Articles 7, 8, 9 have ratings 10.0, 11.0, 12.0
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 3);
+          expect(response.data.items.every((a) => a.rating >= 10.0), isTrue);
+        });
+
+        test('should filter using \$gt (>) operator on a double', () async {
+          // Arrange
+          final filter = {
+            'rating': {r'$gt': 10.0},
+          }; // Articles 8, 9 have ratings 11.0, 12.0
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 2);
+          expect(response.data.items.every((a) => a.rating > 10.0), isTrue);
+        });
+
+        test('should filter using \$lte (<=) operator on a double', () async {
+          // Arrange
+          final filter = {
+            'rating': {r'$lte': 5.0},
+          }; // Articles 0, 1, 2 have ratings 3.0, 4.0, 5.0
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 3);
+          expect(response.data.items.every((a) => a.rating <= 5.0), isTrue);
+        });
+
+        test('should filter using \$lt (<) operator on a double', () async {
+          // Arrange
+          final filter = {
+            'rating': {r'$lt': 5.0},
+          }; // Articles 0, 1 have ratings 3.0, 4.0
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 2);
+          expect(response.data.items.every((a) => a.rating < 5.0), isTrue);
+        });
       });
     });
   });
