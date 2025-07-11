@@ -160,9 +160,11 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       _sortItems(allItems, sort);
     }
 
-    // Pagination logic will be updated in the next step.
-    // For now, pass null to keep the code compiling.
-    final paginatedResponse = _createPaginatedResponse(allItems, null, null);
+    final paginatedResponse = _createPaginatedResponse(
+      allItems,
+      pagination?.cursor,
+      pagination?.limit,
+    );
     return SuccessApiResponse(
       data: paginatedResponse,
       metadata: ResponseMetadata(
