@@ -362,5 +362,83 @@ void main() {
         );
       });
     });
+
+    group('readAll', () {
+      late HtDataInMemory<Article> clientWithData;
+      late List<Article> allArticles;
+
+      setUp(() {
+        // Create 10 articles for diverse testing scenarios
+        allArticles = createTestArticles(10);
+        clientWithData = HtDataInMemory<Article>(
+          getId: (article) => article.id,
+          toJson: (article) => article.toJson(),
+          initialData: allArticles,
+        );
+      });
+
+      group('filtering', () {
+        test('should return all items when no filter is provided', () async {
+          // Act
+          final response = await clientWithData.readAll();
+
+          // Assert
+          expect(response.data.items.length, 10);
+        });
+
+        test('should filter by a simple exact match', () async {
+          // Arrange
+          final filter = {'isPublished': true}; // 5 articles are published
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 5);
+          expect(response.data.items.every((a) => a.isPublished), isTrue);
+        });
+
+        test('should return an empty list for a filter with no matches',
+            () async {
+          // Arrange
+          final filter = {'title': 'Non-existent Title'};
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items, isEmpty);
+        });
+
+        test('should filter correctly within a user scope', () async {
+          // Arrange
+          const userId = 'user-abc';
+          final userArticles = [
+            Article(
+              id: 'user-id-1',
+              title: 'User Article 1',
+              category: Category(id: 'cat-1', name: 'Category 1'),
+              isPublished: true,
+            ),
+            Article(
+              id: 'user-id-2',
+              title: 'User Article 2',
+              category: Category(id: 'cat-2', name: 'Category 2'),
+              isPublished: false,
+            ),
+          ];
+          await client.create(item: userArticles[0], userId: userId);
+          await client.create(item: userArticles[1], userId: userId);
+          final filter = {'isPublished': true};
+
+          // Act
+          final response = await client.readAll(filter: filter, userId: userId);
+
+          // Assert
+          expect(response.data.items.length, 1);
+          expect(response.data.items.first.id, 'user-id-1');
+        });
+      });
+    });
   });
 }
