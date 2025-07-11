@@ -1,7 +1,6 @@
-// ignore_for_file: prefer_const_constructors
+// ignore_for_file: prefer_const_constructors, use_is_even_rather_than_modulo
 
 import 'package:equatable/equatable.dart';
-import 'package:ht_data_client/ht_data_client.dart';
 import 'package:ht_data_inmemory/ht_data_inmemory.dart';
 import 'package:ht_shared/ht_shared.dart';
 import 'package:test/test.dart';
@@ -45,7 +44,8 @@ class Article extends Equatable {
       };
 
   @override
-  List<Object?> get props => [id, title, category, isPublished, rating, publishedAt];
+  List<Object?> get props =>
+      [id, title, category, isPublished, rating, publishedAt];
 }
 
 List<Article> createTestArticles(int count) {
@@ -56,8 +56,7 @@ List<Article> createTestArticles(int count) {
       category: Category(id: 'cat-${i % 2}', name: 'Category ${i % 2}'),
       isPublished: i % 2 == 0,
       rating: 3.0 + i,
-      publishedAt:
-          i.isEven ? DateTime(2024, 1, 1).add(Duration(days: i)) : null,
+      publishedAt: i.isEven ? DateTime(2024).add(Duration(days: i)) : null,
     );
   });
 }
@@ -152,7 +151,8 @@ void main() {
         expect(response.data, newArticle);
 
         // Verify it was stored in the user's scope
-        final readResponse = await client.read(id: newArticle.id, userId: userId);
+        final readResponse =
+            await client.read(id: newArticle.id, userId: userId);
         expect(readResponse.data, newArticle);
 
         // Verify it's not in the global scope
@@ -429,7 +429,6 @@ void main() {
               id: 'user-id-2',
               title: 'User Article 2',
               category: Category(id: 'cat-2', name: 'Category 2'),
-              isPublished: false,
             ),
           ];
           await client.create(item: userArticles[0], userId: userId);
@@ -444,7 +443,7 @@ void main() {
           expect(response.data.items.first.id, 'user-id-1');
         });
 
-        test('should filter using \$in operator', () async {
+        test(r'should filter using $in operator', () async {
           // Arrange
           final filter = {
             'category.id': {
@@ -463,7 +462,7 @@ void main() {
           );
         });
 
-        test('should filter using \$nin (not in) operator', () async {
+        test(r'should filter using $nin (not in) operator', () async {
           // Arrange
           final filter = {
             'category.id': {
@@ -482,7 +481,7 @@ void main() {
           );
         });
 
-        test('should filter using \$ne (not equal) operator', () async {
+        test(r'should filter using $ne (not equal) operator', () async {
           // Arrange
           final filter = {
             'title': {r'$ne': 'Article 5'},
@@ -493,10 +492,13 @@ void main() {
 
           // Assert
           expect(response.data.items.length, 9);
-          expect(response.data.items.every((a) => a.title != 'Article 5'), isTrue);
+          expect(
+            response.data.items.every((a) => a.title != 'Article 5'),
+            isTrue,
+          );
         });
 
-        test('should filter using \$gte (>=) operator on a double', () async {
+        test(r'should filter using $gte (>=) operator on a double', () async {
           // Arrange
           final filter = {
             'rating': {r'$gte': 10.0},
@@ -510,7 +512,7 @@ void main() {
           expect(response.data.items.every((a) => a.rating >= 10.0), isTrue);
         });
 
-        test('should filter using \$gt (>) operator on a double', () async {
+        test(r'should filter using $gt (>) operator on a double', () async {
           // Arrange
           final filter = {
             'rating': {r'$gt': 10.0},
@@ -524,7 +526,7 @@ void main() {
           expect(response.data.items.every((a) => a.rating > 10.0), isTrue);
         });
 
-        test('should filter using \$lte (<=) operator on a double', () async {
+        test(r'should filter using $lte (<=) operator on a double', () async {
           // Arrange
           final filter = {
             'rating': {r'$lte': 5.0},
@@ -538,7 +540,7 @@ void main() {
           expect(response.data.items.every((a) => a.rating <= 5.0), isTrue);
         });
 
-        test('should filter using \$lt (<) operator on a double', () async {
+        test(r'should filter using $lt (<) operator on a double', () async {
           // Arrange
           final filter = {
             'rating': {r'$lt': 5.0},
@@ -588,7 +590,7 @@ void main() {
           // Arrange: Sort by isPublished (desc), then rating (asc)
           final sort = [
             const SortOption('isPublished', SortOrder.desc),
-            const SortOption('rating', SortOrder.asc),
+            const SortOption('rating'),
           ];
 
           // Act
@@ -610,7 +612,7 @@ void main() {
 
         test('should handle null values by sorting them last', () async {
           // Arrange: Sort by publishedAt ascending. Nulls should be last.
-          final sort = [const SortOption('publishedAt', SortOrder.asc)];
+          final sort = [const SortOption('publishedAt')];
 
           // Act
           final response = await clientWithData.readAll(sort: sort);
@@ -621,11 +623,11 @@ void main() {
           expect(nonNullItems.every((a) => a.publishedAt != null), isTrue);
           expect(
             nonNullItems.first.publishedAt,
-            DateTime(2024, 1, 1),
+            DateTime(2024),
           ); // Article 0
           expect(
             nonNullItems.last.publishedAt,
-            DateTime(2024, 1, 1).add(Duration(days: 8)),
+            DateTime(2024).add(Duration(days: 8)),
           ); // Article 8
 
           // Assert: Last 5 items have null dates
@@ -638,7 +640,7 @@ void main() {
         test('should respect limit and set hasMore to true', () async {
           // Arrange
           // Sort by ID to have a predictable order for cursor check
-          final sort = [const SortOption('id', SortOrder.asc)];
+          final sort = [const SortOption('id')];
           final pagination = PaginationOptions(limit: 5);
 
           // Act
@@ -666,8 +668,7 @@ void main() {
           expect(response.data.cursor, isNull);
         });
 
-        test(
-            'should set hasMore to false when items are less than limit',
+        test('should set hasMore to false when items are less than limit',
             () async {
           // Arrange
           final pagination = PaginationOptions(limit: 15);
@@ -683,7 +684,7 @@ void main() {
 
         test('should fetch the next page correctly using a cursor', () async {
           // Arrange: sort by ID for predictable order
-          final sort = [const SortOption('id', SortOrder.asc)];
+          final sort = [const SortOption('id')];
           final firstPagePagination = PaginationOptions(limit: 4);
 
           // Act: Get the first page
@@ -714,8 +715,7 @@ void main() {
           expect(secondResponse.data.cursor, 'id-7');
         });
 
-        test('should return an empty list for a non-existent cursor',
-            () async {
+        test('should return an empty list for a non-existent cursor', () async {
           // Arrange
           final pagination = PaginationOptions(cursor: 'non-existent-id');
 
