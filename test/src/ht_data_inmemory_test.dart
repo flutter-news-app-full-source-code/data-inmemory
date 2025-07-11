@@ -311,5 +311,56 @@ void main() {
         );
       });
     });
+
+    group('delete', () {
+      late Article articleToDelete;
+      late Article userScopedArticleToDelete;
+      const userId = 'user-123';
+
+      setUp(() async {
+        articleToDelete = initialArticles[0];
+        userScopedArticleToDelete = initialArticles[1];
+        // Pre-populate with one global and one user-scoped article
+        await client.create(item: articleToDelete);
+        await client.create(item: userScopedArticleToDelete, userId: userId);
+      });
+
+      test('should delete an item successfully from global scope', () async {
+        // Act
+        await client.delete(id: articleToDelete.id);
+
+        // Assert: Verify it's gone
+        expect(
+          () => client.read(id: articleToDelete.id),
+          throwsA(isA<NotFoundException>()),
+        );
+      });
+
+      test('should delete an item successfully from user scope', () async {
+        // Act
+        await client.delete(id: userScopedArticleToDelete.id, userId: userId);
+
+        // Assert: Verify it's gone from user scope
+        expect(
+          () => client.read(id: userScopedArticleToDelete.id, userId: userId),
+          throwsA(isA<NotFoundException>()),
+        );
+
+        // Assert: Verify global scope is unaffected
+        final globalItemResponse = await client.read(id: articleToDelete.id);
+        expect(globalItemResponse.data, articleToDelete);
+      });
+
+      test('should throw NotFoundException for non-existent ID', () {
+        // Arrange
+        const nonExistentId = 'id-does-not-exist';
+
+        // Act & Assert
+        expect(
+          () => client.delete(id: nonExistentId),
+          throwsA(isA<NotFoundException>()),
+        );
+      });
+    });
   });
 }
