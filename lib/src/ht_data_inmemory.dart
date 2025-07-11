@@ -166,9 +166,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       // Get the original items from the matched JSON items
       final matchedIds =
           matchedJsonItems.map((json) => json['id'] as String).toSet();
-      allItems = allItems
-          .where((item) => matchedIds.contains(_getId(item)))
-          .toList();
+      allItems =
+          allItems.where((item) => matchedIds.contains(_getId(item))).toList();
     }
 
     // 2. Apply sorting if sort options are provided
