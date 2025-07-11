@@ -8,18 +8,15 @@ An in-memory implementation of the `HtDataClient` interface, designed primarily 
 
 ## Description
 
-`HtDataInMemoryClient` provides a way to simulate a backend data source entirely in memory. It supports:
+`HtDataInMemory` provides a way to simulate a backend data source entirely in memory. It supports:
 - Standard CRUD (Create, Read, Update, Delete) operations.
 - User-scoped data: Operations can be tied to a specific `userId`.
 - Global data: Operations can target data not associated with any user.
-- Basic querying capabilities via `readAllByQuery`, including:
+- Rich, document-style querying via the `readAll` method's `filter` parameter, which supports:
     - Filtering on nested object properties using dot-notation (e.g., `category.id`).
-    - Case-insensitive "contains" text search on fields using the `Contains` suffix (e.g., `nameContains`).
-    - Case-insensitive "is one of" checks for comma-separated values using the `In` suffix (e.g., `statusIn=active,pending`). This also supports checking if any element in a list field is present in the query's list of values.
-    - Exact matches for fields without suffixes.
-    - AND logic for exact/`In` filters, OR logic for `Contains` filters.
-- Sorting via `sortBy` and `sortOrder` parameters.
-- Pagination for `readAll` and `readAllByQuery` methods.
+    - Operators like `$in`, `$nin`, `$ne`, `$gte`, `$gt`, `$lte`, and `$lt`.
+- Multi-field sorting via a list of `SortOption` objects.
+- Cursor-based pagination via the `PaginationOptions` object.
 
 This client is useful for:
 - Unit and integration testing of repositories or BLoCs that depend on `HtDataClient`.
@@ -58,10 +55,8 @@ Then run `dart pub get` or `flutter pub get`.
 - In-memory storage for generic data types `T`.
 - Support for `initialData` to pre-populate the client.
 - User-scoped and global data operations.
-- `create`, `read`, `readAll`, `update`, `delete` methods.
-- `readAllByQuery` with support for nested paths, `_in` (case-insensitive, handles lists), and `_contains` (case-insensitive) operators.
-- Pagination for `readAll` and `readAllByQuery`.
-- Sorting for `readAll` and `readAllByQuery`.
+- `create`, `read`, `update`, `delete` methods.
+- A unified `readAll` method with support for rich filtering, multi-field sorting, and cursor-based pagination.
 - Throws standard exceptions from `package:ht_shared` (e.g., `NotFoundException`, `BadRequestException`).
 
 ## Usage
@@ -69,7 +64,7 @@ Then run `dart pub get` or `flutter pub get`.
 Here's a basic example of how to use `HtDataInMemoryClient` with a simple `Article` model:
 
 ```dart
-import 'package:ht_data_client/ht_data_client.dart';
+import 'package:ht_data_client/ht_data_client.dart'; // Defines HtDataClient
 import 'package:ht_data_inmemory/ht_data_inmemory.dart';
 import 'package:ht_shared/ht_shared.dart'; // Assuming SuccessApiResponse etc. are here
 
@@ -77,13 +72,14 @@ import 'package:ht_shared/ht_shared.dart'; // Assuming SuccessApiResponse etc. a
 class Article {
   Article({required this.id, required this.title, this.content});
   final String id;
-  final String title;
+  final String title; 
   final String? content;
 
   // Required for HtDataInMemoryClient
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
+        // Add other fields for querying
         if (content != null) 'content': content,
       };
   
@@ -128,32 +124,24 @@ void main() async {
         await client.read(id: 'article1');
     print('Read: ${readResponse.data.title}');
 
-    // Query articles
-    SuccessApiResponse<PaginatedResponse<Article>> queryResponse =
-        await client.readAllByQuery({'titleContains': 'Article'});
-    print('Found ${queryResponse.data.items.length} articles matching query:');
-    for (var article in queryResponse.data.items) {
-      print('- ${article.title}');
-    }
+    // Query articles with filter, sort, and pagination
+    final filter = {
+      'title': {'\$ne': 'Some Other Title'} // Not equal to
+    };
+    final sort = [const SortOption('title', SortOrder.desc)];
+    final pagination = const PaginationOptions(limit: 5);
 
-    // Query articles and sort them
-    SuccessApiResponse<PaginatedResponse<Article>> sortedResponse =
-        await client.readAllByQuery(
-      {'titleContains': 'Article'},
-      sortBy: 'title',
-      sortOrder: SortOrder.desc,
+    final queryResponse = await client.readAll(
+      filter: filter,
+      sort: sort,
+      pagination: pagination,
     );
-    print('Found ${sortedResponse.data.items.length} sorted articles:');
-    for (var article in sortedResponse.data.items) {
+
+    print('Found ${queryResponse.data.items.length} sorted articles matching query:');
+    for (final article in queryResponse.data.items) {
       print('- ${article.title}');
     }
-
-    // Query for articles by a specific user (if applicable)
-    // final userArticlesResponse = await client.readAllByQuery(
-    //   {'title_contains': 'User Post'},
-    //   userId: 'user123',
-    // );
-    // print('Found ${userArticlesResponse.data.items.length} articles for user123.');
+    print('Has more pages: ${queryResponse.data.hasMore}');
 
   } on HtHttpException catch (e) {
     print('An error occurred: ${e.message}');
