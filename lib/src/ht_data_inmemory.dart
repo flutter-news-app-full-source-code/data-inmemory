@@ -149,23 +149,20 @@ class HtDataInMemory<T> implements HtDataClient<T> {
   @override
   Future<SuccessApiResponse<PaginatedResponse<T>>> readAll({
     String? userId,
-    String? startAfterId,
-    int? limit,
-    String? sortBy,
-    SortOrder? sortOrder,
+    Map<String, dynamic>? filter,
+    PaginationOptions? pagination,
+    List<SortOption>? sort,
   }) async {
     final userStorage = _getStorageForUser(userId);
     final allItems = userStorage.values.toList();
 
-    if (sortBy != null) {
-      _sortItems(allItems, sortBy, sortOrder ?? SortOrder.asc);
+    if (sort != null && sort.isNotEmpty) {
+      _sortItems(allItems, sort);
     }
 
-    final paginatedResponse = _createPaginatedResponse(
-      allItems,
-      startAfterId,
-      limit,
-    );
+    // Pagination logic will be updated in the next step.
+    // For now, pass null to keep the code compiling.
+    final paginatedResponse = _createPaginatedResponse(allItems, null, null);
     return SuccessApiResponse(
       data: paginatedResponse,
       metadata: ResponseMetadata(
@@ -190,29 +187,34 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     return currentValue;
   }
 
-  void _sortItems(List<T> items, String sortBy, SortOrder sortOrder) {
+  void _sortItems(List<T> items, List<SortOption> sortOptions) {
     items.sort((a, b) {
-      final jsonA = _toJson(a);
-      final jsonB = _toJson(b);
+      for (final option in sortOptions) {
+        final jsonA = _toJson(a);
+        final jsonB = _toJson(b);
 
-      final valueA = _getNestedValue(jsonA, sortBy);
-      final valueB = _getNestedValue(jsonB, sortBy);
+        final valueA = _getNestedValue(jsonA, option.field);
+        final valueB = _getNestedValue(jsonB, option.field);
 
-      // Handle nulls: items with null values for the sort key go last.
-      if (valueA == null && valueB == null) return 0;
-      if (valueA == null) return 1; // a is greater (put at end)
-      if (valueB == null) return -1; // b is greater (put at end)
+        // Handle nulls: items with null values for the sort key go last.
+        if (valueA == null && valueB == null) continue; // try next sort option
+        if (valueA == null) return 1; // a is greater (put at end)
+        if (valueB == null) return -1; // b is greater (put at end)
 
-      int compareResult;
-      if (valueA is num && valueB is num) {
-        compareResult = valueA.compareTo(valueB);
-      } else {
-        compareResult = valueA.toString().toLowerCase().compareTo(
-              valueB.toString().toLowerCase(),
-            );
+        int compareResult;
+        if (valueA is Comparable && valueB is Comparable) {
+          compareResult = valueA.compareTo(valueB);
+        } else {
+          compareResult = valueA.toString().toLowerCase().compareTo(
+                valueB.toString().toLowerCase(),
+              );
+        }
+
+        if (compareResult != 0) {
+          return option.order == SortOrder.asc ? compareResult : -compareResult;
+        }
       }
-
-      return sortOrder == SortOrder.asc ? compareResult : -compareResult;
+      return 0; // all sort options resulted in equality
     });
   }
 
