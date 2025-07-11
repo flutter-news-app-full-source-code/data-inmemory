@@ -154,8 +154,24 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     List<SortOption>? sort,
   }) async {
     final userStorage = _getStorageForUser(userId);
-    final allItems = userStorage.values.toList();
+    final userJsonStorage = _getJsonStorageForUser(userId);
+    var allItems = userStorage.values.toList();
 
+    // 1. Apply filtering if a filter is provided
+    if (filter != null && filter.isNotEmpty) {
+      final allJsonItems = userJsonStorage.values.toList();
+      final matchedJsonItems = allJsonItems.where((jsonItem) {
+        return _matchesFilter(jsonItem, filter);
+      }).toList();
+      // Get the original items from the matched JSON items
+      final matchedIds =
+          matchedJsonItems.map((json) => json['id'] as String).toSet();
+      allItems = allItems
+          .where((item) => matchedIds.contains(_getId(item)))
+          .toList();
+    }
+
+    // 2. Apply sorting if sort options are provided
     if (sort != null && sort.isNotEmpty) {
       _sortItems(allItems, sort);
     }
