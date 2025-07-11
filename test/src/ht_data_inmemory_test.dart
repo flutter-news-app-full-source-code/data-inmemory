@@ -221,5 +221,95 @@ void main() {
         );
       });
     });
+
+    group('update', () {
+      late Article articleToUpdate;
+      late Article userScopedArticleToUpdate;
+      const userId = 'user-123';
+
+      setUp(() async {
+        articleToUpdate = initialArticles[0];
+        userScopedArticleToUpdate = initialArticles[1];
+        // Pre-populate with one global and one user-scoped article
+        await client.create(item: articleToUpdate);
+        await client.create(item: userScopedArticleToUpdate, userId: userId);
+      });
+
+      test('should update an item successfully in global scope', () async {
+        // Arrange
+        final updatedArticle = Article(
+          id: articleToUpdate.id,
+          title: 'Updated Title',
+          category: articleToUpdate.category,
+        );
+
+        // Act
+        final response = await client.update(
+          id: articleToUpdate.id,
+          item: updatedArticle,
+        );
+
+        // Assert
+        expect(response.data, updatedArticle);
+        final readResponse = await client.read(id: articleToUpdate.id);
+        expect(readResponse.data.title, 'Updated Title');
+      });
+
+      test('should update an item successfully in user scope', () async {
+        // Arrange
+        final updatedArticle = Article(
+          id: userScopedArticleToUpdate.id,
+          title: 'Updated User-Scoped Title',
+          category: userScopedArticleToUpdate.category,
+        );
+
+        // Act
+        final response = await client.update(
+          id: userScopedArticleToUpdate.id,
+          item: updatedArticle,
+          userId: userId,
+        );
+
+        // Assert
+        expect(response.data, updatedArticle);
+        final readResponse =
+            await client.read(id: userScopedArticleToUpdate.id, userId: userId);
+        expect(readResponse.data.title, 'Updated User-Scoped Title');
+      });
+
+      test('should throw NotFoundException for non-existent ID', () {
+        // Arrange
+        const nonExistentId = 'id-does-not-exist';
+        final updatedArticle = Article(
+          id: nonExistentId,
+          title: 'Non-existent',
+          category: const Category(id: 'cat-new', name: 'New'),
+        );
+
+        // Act & Assert
+        expect(
+          () => client.update(id: nonExistentId, item: updatedArticle),
+          throwsA(isA<NotFoundException>()),
+        );
+      });
+
+      test('should throw BadRequestException for ID mismatch', () {
+        // Arrange
+        final updatedArticleWithWrongId = Article(
+          id: 'wrong-id', // ID in object is different from path ID
+          title: 'Mismatched ID',
+          category: articleToUpdate.category,
+        );
+
+        // Act & Assert
+        expect(
+          () => client.update(
+            id: articleToUpdate.id, // Path ID
+            item: updatedArticleWithWrongId,
+          ),
+          throwsA(isA<BadRequestException>()),
+        );
+      });
+    });
   });
 }
