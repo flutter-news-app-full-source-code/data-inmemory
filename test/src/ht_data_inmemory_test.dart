@@ -25,6 +25,7 @@ class Article extends Equatable {
     required this.category,
     this.isPublished = false,
     this.rating = 0.0,
+    this.publishedAt,
   });
 
   final String id;
@@ -32,6 +33,7 @@ class Article extends Equatable {
   final Category category;
   final bool isPublished;
   final double rating;
+  final DateTime? publishedAt;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -39,10 +41,11 @@ class Article extends Equatable {
         'category': category.toJson(),
         'isPublished': isPublished,
         'rating': rating,
+        'publishedAt': publishedAt?.toIso8601String(),
       };
 
   @override
-  List<Object?> get props => [id, title, category, isPublished, rating];
+  List<Object?> get props => [id, title, category, isPublished, rating, publishedAt];
 }
 
 List<Article> createTestArticles(int count) {
@@ -53,6 +56,8 @@ List<Article> createTestArticles(int count) {
       category: Category(id: 'cat-${i % 2}', name: 'Category ${i % 2}'),
       isPublished: i % 2 == 0,
       rating: 3.0 + i,
+      publishedAt:
+          i.isEven ? DateTime(2024, 1, 1).add(Duration(days: i)) : null,
     );
   });
 }
@@ -563,6 +568,69 @@ void main() {
             response.data.items.every((a) => a.category.name == 'Category 1'),
             isTrue,
           );
+        });
+      });
+
+      group('sorting', () {
+        test('should sort by a single field in descending order', () async {
+          // Arrange
+          final sort = [const SortOption('rating', SortOrder.desc)];
+
+          // Act
+          final response = await clientWithData.readAll(sort: sort);
+
+          // Assert
+          expect(response.data.items.first.rating, 12.0); // Highest rating
+          expect(response.data.items.last.rating, 3.0); // Lowest rating
+        });
+
+        test('should sort by multiple fields', () async {
+          // Arrange: Sort by isPublished (desc), then rating (asc)
+          final sort = [
+            const SortOption('isPublished', SortOrder.desc),
+            const SortOption('rating', SortOrder.asc),
+          ];
+
+          // Act
+          final response = await clientWithData.readAll(sort: sort);
+          final items = response.data.items;
+
+          // Assert: First 5 items are published, sorted by rating ascending
+          final publishedItems = items.take(5).toList();
+          expect(publishedItems.every((a) => a.isPublished), isTrue);
+          expect(publishedItems.first.rating, 3.0); // id-0, rating 3.0
+          expect(publishedItems.last.rating, 11.0); // id-8, rating 11.0
+
+          // Assert: Last 5 items are not published, sorted by rating ascending
+          final unpublishedItems = items.skip(5).toList();
+          expect(unpublishedItems.every((a) => !a.isPublished), isTrue);
+          expect(unpublishedItems.first.rating, 4.0); // id-1, rating 4.0
+          expect(unpublishedItems.last.rating, 12.0); // id-9, rating 12.0
+        });
+
+        test('should handle null values by sorting them last', () async {
+          // Arrange: Sort by publishedAt ascending. Nulls should be last.
+          final sort = [const SortOption('publishedAt', SortOrder.asc)];
+
+          // Act
+          final response = await clientWithData.readAll(sort: sort);
+          final items = response.data.items;
+
+          // Assert: First 5 items have non-null dates and are sorted
+          final nonNullItems = items.take(5).toList();
+          expect(nonNullItems.every((a) => a.publishedAt != null), isTrue);
+          expect(
+            nonNullItems.first.publishedAt,
+            DateTime(2024, 1, 1),
+          ); // Article 0
+          expect(
+            nonNullItems.last.publishedAt,
+            DateTime(2024, 1, 1).add(Duration(days: 8)),
+          ); // Article 8
+
+          // Assert: Last 5 items have null dates
+          final nullItems = items.skip(5).toList();
+          expect(nullItems.every((a) => a.publishedAt == null), isTrue);
         });
       });
     });
