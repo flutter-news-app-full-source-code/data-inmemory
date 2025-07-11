@@ -116,5 +116,57 @@ void main() {
         );
       });
     });
+
+    group('create', () {
+      final newArticle = Article(
+        id: 'new-id',
+        title: 'New Article',
+        category: const Category(id: 'cat-new', name: 'New'),
+      );
+
+      test('should create an item successfully in global scope', () async {
+        // Act
+        final response = await client.create(item: newArticle);
+
+        // Assert
+        expect(response.data, newArticle);
+
+        // Verify it was stored
+        final readResponse = await client.read(id: newArticle.id);
+        expect(readResponse.data, newArticle);
+      });
+
+      test('should create an item successfully in user scope', () async {
+        // Arrange
+        const userId = 'user-123';
+
+        // Act
+        final response = await client.create(item: newArticle, userId: userId);
+
+        // Assert
+        expect(response.data, newArticle);
+
+        // Verify it was stored in the user's scope
+        final readResponse = await client.read(id: newArticle.id, userId: userId);
+        expect(readResponse.data, newArticle);
+
+        // Verify it's not in the global scope
+        expect(
+          () => client.read(id: newArticle.id),
+          throwsA(isA<NotFoundException>()),
+        );
+      });
+
+      test('should throw BadRequestException for duplicate ID', () async {
+        // Arrange: create the item first
+        await client.create(item: newArticle);
+
+        // Act & Assert
+        expect(
+          () => client.create(item: newArticle),
+          throwsA(isA<BadRequestException>()),
+        );
+      });
+    });
   });
 }
