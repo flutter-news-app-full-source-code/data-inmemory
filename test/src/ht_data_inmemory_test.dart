@@ -546,6 +546,24 @@ void main() {
           expect(response.data.items.length, 2);
           expect(response.data.items.every((a) => a.rating < 5.0), isTrue);
         });
+
+        test('should filter using dot-notation for nested properties',
+            () async {
+          // Arrange
+          final filter = {
+            'category.name': 'Category 1',
+          }; // 5 articles are in Category 1
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 5);
+          expect(
+            response.data.items.every((a) => a.category.name == 'Category 1'),
+            isTrue,
+          );
+        });
       });
     });
   });
