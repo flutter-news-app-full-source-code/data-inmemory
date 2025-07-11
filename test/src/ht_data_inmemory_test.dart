@@ -168,5 +168,58 @@ void main() {
         );
       });
     });
+
+    group('read', () {
+      setUp(() async {
+        // Pre-populate with one global and one user-scoped article
+        await client.create(item: initialArticles[0]);
+        await client.create(item: initialArticles[1], userId: 'user-123');
+      });
+
+      test('should read an item successfully from global scope', () async {
+        // Arrange
+        final idToRead = initialArticles[0].id;
+
+        // Act
+        final response = await client.read(id: idToRead);
+
+        // Assert
+        expect(response.data, initialArticles[0]);
+      });
+
+      test('should read an item successfully from user scope', () async {
+        // Arrange
+        final idToRead = initialArticles[1].id;
+        const userId = 'user-123';
+
+        // Act
+        final response = await client.read(id: idToRead, userId: userId);
+
+        // Assert
+        expect(response.data, initialArticles[1]);
+      });
+
+      test('should throw NotFoundException for non-existent ID', () {
+        // Arrange
+        const nonExistentId = 'id-does-not-exist';
+
+        // Act & Assert
+        expect(
+          () => client.read(id: nonExistentId),
+          throwsA(isA<NotFoundException>()),
+        );
+      });
+
+      test('should throw NotFoundException for item in different scope', () {
+        // Arrange: item exists in user-123 scope
+        final idInUserScope = initialArticles[1].id;
+
+        // Act & Assert: try to read from global scope
+        expect(
+          () => client.read(id: idInUserScope),
+          throwsA(isA<NotFoundException>()),
+        );
+      });
+    });
   });
 }
