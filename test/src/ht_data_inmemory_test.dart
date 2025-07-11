@@ -680,6 +680,53 @@ void main() {
           expect(response.data.hasMore, isFalse);
           expect(response.data.cursor, isNull);
         });
+
+        test('should fetch the next page correctly using a cursor', () async {
+          // Arrange: sort by ID for predictable order
+          final sort = [const SortOption('id', SortOrder.asc)];
+          final firstPagePagination = PaginationOptions(limit: 4);
+
+          // Act: Get the first page
+          final firstResponse = await clientWithData.readAll(
+            sort: sort,
+            pagination: firstPagePagination,
+          );
+          final cursor = firstResponse.data.cursor;
+
+          // Assert first page is correct
+          expect(firstResponse.data.items.length, 4);
+          expect(firstResponse.data.hasMore, isTrue);
+          expect(cursor, 'id-3');
+
+          // Act: Get the second page using the cursor
+          final secondPagePagination =
+              PaginationOptions(limit: 4, cursor: cursor);
+          final secondResponse = await clientWithData.readAll(
+            sort: sort,
+            pagination: secondPagePagination,
+          );
+
+          // Assert second page is correct
+          expect(secondResponse.data.items.length, 4);
+          expect(secondResponse.data.hasMore, isTrue);
+          expect(secondResponse.data.items.first.id, 'id-4');
+          expect(secondResponse.data.items.last.id, 'id-7');
+          expect(secondResponse.data.cursor, 'id-7');
+        });
+
+        test('should return an empty list for a non-existent cursor',
+            () async {
+          // Arrange
+          final pagination = PaginationOptions(cursor: 'non-existent-id');
+
+          // Act
+          final response = await clientWithData.readAll(pagination: pagination);
+
+          // Assert
+          expect(response.data.items, isEmpty);
+          expect(response.data.hasMore, isFalse);
+          expect(response.data.cursor, isNull);
+        });
       });
     });
   });
