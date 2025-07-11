@@ -438,6 +438,58 @@ void main() {
           expect(response.data.items.length, 1);
           expect(response.data.items.first.id, 'user-id-1');
         });
+
+        test('should filter using \$in operator', () async {
+          // Arrange
+          final filter = {
+            'category.id': {
+              r'$in': ['cat-1'],
+            },
+          }; // 5 articles are in cat-1
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 5);
+          expect(
+            response.data.items.every((a) => a.category.id == 'cat-1'),
+            isTrue,
+          );
+        });
+
+        test('should filter using \$nin (not in) operator', () async {
+          // Arrange
+          final filter = {
+            'category.id': {
+              r'$nin': ['cat-1'],
+            },
+          }; // 5 articles are not in cat-1 (they are in cat-0)
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 5);
+          expect(
+            response.data.items.every((a) => a.category.id != 'cat-1'),
+            isTrue,
+          );
+        });
+
+        test('should filter using \$ne (not equal) operator', () async {
+          // Arrange
+          final filter = {
+            'title': {r'$ne': 'Article 5'},
+          }; // 9 articles do not have this title
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 9);
+          expect(response.data.items.every((a) => a.title != 'Article 5'), isTrue);
+        });
       });
     });
   });
