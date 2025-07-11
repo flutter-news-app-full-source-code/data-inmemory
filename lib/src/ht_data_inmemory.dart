@@ -174,6 +174,67 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     );
   }
 
+  /// Checks if a given [jsonItem] matches all conditions in the [filter].
+  bool _matchesFilter(
+    Map<String, dynamic> jsonItem,
+    Map<String, dynamic> filter,
+  ) {
+    for (final entry in filter.entries) {
+      final key = entry.key;
+      final queryValue = entry.value;
+      final itemValue = _getNestedValue(jsonItem, key);
+
+      if (queryValue is Map<String, dynamic>) {
+        // Handle operators like $in, $gte, etc.
+        if (!_evaluateOperator(itemValue, queryValue)) {
+          return false; // This condition failed
+        }
+      } else {
+        // Simple exact match
+        if (itemValue?.toString() != queryValue?.toString()) {
+          return false; // This condition failed
+        }
+      }
+    }
+    return true; // All conditions passed
+  }
+
+  /// Evaluates a single operator condition (e.g., {'$in': [...]}).
+  bool _evaluateOperator(dynamic itemValue, Map<String, dynamic> operatorMap) {
+    for (final opEntry in operatorMap.entries) {
+      final operator = opEntry.key;
+      final operatorValue = opEntry.value;
+
+      switch (operator) {
+        case r'$in':
+          if (operatorValue is! List) return false;
+          if (itemValue == null) return false;
+          final lowercasedList =
+              operatorValue.map((e) => e.toString().toLowerCase()).toList();
+          return lowercasedList.contains(itemValue.toString().toLowerCase());
+        case r'$nin': // not in
+          if (operatorValue is! List) return false;
+          if (itemValue == null) return true;
+          final lowercasedList =
+              operatorValue.map((e) => e.toString().toLowerCase()).toList();
+          return !lowercasedList.contains(itemValue.toString().toLowerCase());
+        case r'$ne': // not equal
+          return itemValue?.toString() != operatorValue?.toString();
+        case r'$gte' || r'$gt' || r'$lte' || r'$lt':
+          if (itemValue == null) return false;
+          if (itemValue is Comparable && operatorValue is Comparable) {
+            final cmp = itemValue.compareTo(operatorValue);
+            return (operator == r'$gte' && cmp >= 0) ||
+                (operator == r'$gt' && cmp > 0) ||
+                (operator == r'$lte' && cmp <= 0) ||
+                (operator == r'$lt' && cmp < 0);
+          }
+          return false; // Cannot compare non-comparable types
+      }
+    }
+    return true; // Default to true if no known operators are found
+  }
+
   dynamic _getNestedValue(Map<String, dynamic> item, String dotPath) {
     if (dotPath.isEmpty) return null;
     final parts = dotPath.split('.');
