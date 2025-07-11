@@ -633,6 +633,54 @@ void main() {
           expect(nullItems.every((a) => a.publishedAt == null), isTrue);
         });
       });
+
+      group('pagination', () {
+        test('should respect limit and set hasMore to true', () async {
+          // Arrange
+          // Sort by ID to have a predictable order for cursor check
+          final sort = [const SortOption('id', SortOrder.asc)];
+          final pagination = PaginationOptions(limit: 5);
+
+          // Act
+          final response = await clientWithData.readAll(
+            sort: sort,
+            pagination: pagination,
+          );
+
+          // Assert
+          expect(response.data.items.length, 5);
+          expect(response.data.hasMore, isTrue);
+          expect(response.data.cursor, 'id-4'); // Last item in the page
+        });
+
+        test('should set hasMore to false when items match limit', () async {
+          // Arrange
+          final pagination = PaginationOptions(limit: 10);
+
+          // Act
+          final response = await clientWithData.readAll(pagination: pagination);
+
+          // Assert
+          expect(response.data.items.length, 10);
+          expect(response.data.hasMore, isFalse);
+          expect(response.data.cursor, isNull);
+        });
+
+        test(
+            'should set hasMore to false when items are less than limit',
+            () async {
+          // Arrange
+          final pagination = PaginationOptions(limit: 15);
+
+          // Act
+          final response = await clientWithData.readAll(pagination: pagination);
+
+          // Assert
+          expect(response.data.items.length, 10);
+          expect(response.data.hasMore, isFalse);
+          expect(response.data.cursor, isNull);
+        });
+      });
     });
   });
 }
