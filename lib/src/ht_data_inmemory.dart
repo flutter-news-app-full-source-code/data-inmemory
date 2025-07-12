@@ -392,4 +392,144 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     _logger.info('Delete SUCCESS: id="$id" deleted for scope "$scope". '
         'Total items: ${userStorage.length}');
   }
+
+  @override
+  Future<SuccessApiResponse<int>> count({
+    String? userId,
+    Map<String, dynamic>? filter,
+  }) async {
+    final userJsonStorage = _getJsonStorageForUser(userId);
+    var allItems = userJsonStorage.values.toList();
+
+    if (filter != null && filter.isNotEmpty) {
+      allItems = allItems.where((item) => _matchesFilter(item, filter)).toList();
+    }
+
+    return SuccessApiResponse(
+      data: allItems.length,
+      metadata: ResponseMetadata(
+        requestId: 'in-memory-req-${DateTime.now().toIso8601String()}',
+        timestamp: DateTime.now(),
+      ),
+    );
+  }
+
+  @override
+  Future<SuccessApiResponse<List<Map<String, dynamic>>>> aggregate({
+    required List<Map<String, dynamic>> pipeline,
+    String? userId,
+  }) async {
+    final userJsonStorage = _getJsonStorageForUser(userId);
+    var results = userJsonStorage.values.toList();
+
+    for (final stage in pipeline) {
+      final stageName = stage.keys.first;
+      final stageSpec = stage[stageName] as Object;
+
+      switch (stageName) {
+        case r'$match':
+          results = _processMatchStage(results, stageSpec as Map<String, dynamic>);
+        case r'$group':
+          results = _processGroupStage(results, stageSpec as Map<String, dynamic>);
+        case r'$sort':
+          results = _processSortStage(results, stageSpec as Map<String, dynamic>);
+        case r'$limit':
+          results = _processLimitStage(results, stageSpec as int);
+        default:
+          _logger.warning('Unsupported aggregation stage: $stageName');
+      }
+    }
+
+    return SuccessApiResponse(
+      data: results,
+      metadata: ResponseMetadata(
+        requestId: 'in-memory-req-${DateTime.now().toIso8601String()}',
+        timestamp: DateTime.now(),
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _processMatchStage(
+    List<Map<String, dynamic>> input,
+    Map<String, dynamic> filter,
+  ) {
+    return input.where((item) => _matchesFilter(item, filter)).toList();
+  }
+
+  List<Map<String, dynamic>> _processGroupStage(
+    List<Map<String, dynamic>> input,
+    Map<String, dynamic> groupSpec,
+  ) {
+    final idExpression = groupSpec['_id'] as String?;
+    if (idExpression == null) return [];
+
+    final groupedResults = <dynamic, Map<String, dynamic>>{};
+
+    for (final item in input) {
+      // Remove '$' prefix from field path
+      final idValue = _getNestedValue(item, idExpression.substring(1));
+      final group = groupedResults.putIfAbsent(
+        idValue,
+        () => {'_id': idValue},
+      );
+
+      // Process accumulators
+      for (final entry in groupSpec.entries) {
+        if (entry.key == '_id') continue;
+
+        final fieldName = entry.key;
+        final accumulator = entry.value as Map<String, dynamic>;
+        final op = accumulator.keys.first;
+
+        if (op == r'$sum') {
+          final value = accumulator[op];
+          if (value == 1) {
+            group[fieldName] = (group[fieldName] ?? 0) + 1;
+          } else if (value is String) {
+            final fieldValue = _getNestedValue(item, value.substring(1));
+            if (fieldValue is num) {
+              group[fieldName] = (group[fieldName] ?? 0) + fieldValue;
+            }
+          }
+        }
+        // Other accumulators like $avg, $min, $max can be added here
+      }
+    }
+
+    return groupedResults.values.toList();
+  }
+
+  List<Map<String, dynamic>> _processSortStage(
+    List<Map<String, dynamic>> input,
+    Map<String, dynamic> sortSpec,
+  ) {
+    final sortedList = List<Map<String, dynamic>>.from(input);
+    sortedList.sort((a, b) {
+      for (final entry in sortSpec.entries) {
+        final field = entry.key;
+        final order = entry.value as int; // 1 for asc, -1 for desc
+
+        final valueA = _getNestedValue(a, field);
+        final valueB = _getNestedValue(b, field);
+
+        if (valueA == null && valueB == null) continue;
+        if (valueA == null) return 1 * order;
+        if (valueB == null) return -1 * order;
+
+        if (valueA is Comparable && valueB is Comparable) {
+          final cmp = valueA.compareTo(valueB) * order;
+          if (cmp != 0) return cmp;
+        }
+      }
+      return 0;
+    });
+    return sortedList;
+  }
+
+  List<Map<String, dynamic>> _processLimitStage(
+    List<Map<String, dynamic>> input,
+    int limit,
+  ) {
+    return input.take(limit).toList();
+  }
 }
