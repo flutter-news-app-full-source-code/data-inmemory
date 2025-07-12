@@ -1,6 +1,6 @@
 # ht_data_inmemory
 
-![coverage: xx%](https://img.shields.io/badge/coverage-100-green)
+![coverage: 98%](https://img.shields.io/badge/coverage-98-green)
 [![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis)
 [![License: PolyForm Free Trial](https://img.shields.io/badge/License-PolyForm%20Free%20Trial-blue)](https://polyformproject.org/licenses/free-trial/1.0.0)
 
@@ -58,6 +58,10 @@ Then run `dart pub get` or `flutter pub get`.
 - `create`, `read`, `update`, `delete` methods.
 - A unified `readAll` method with support for rich filtering, multi-field sorting, and cursor-based pagination.
 - Throws standard exceptions from `package:ht_shared` (e.g., `NotFoundException`, `BadRequestException`).
+- `count` method for efficient document counting without fetching data.
+- `aggregate` method to simulate basic MongoDB aggregation pipelines
+  (supports `$match`, `$group`, `$sort`, `$limit`), enabling testing of
+  analytics-style queries.
 
 ## Usage
 
@@ -142,6 +146,29 @@ void main() async {
       print('- ${article.title}');
     }
     print('Has more pages: ${queryResponse.data.hasMore}');
+
+    // Count published articles
+    final countResponse = await client.count(filter: {'isPublished': true});
+    print('Number of published articles: ${countResponse.data}');
+
+    // Run an aggregation pipeline to get article count per category
+    final aggregateResponse = await client.aggregate(
+      pipeline: [
+        {
+          r'$group': {
+            '_id': r'$category.name',
+            'count': {r'$sum': 1},
+          },
+        },
+        {
+          r'$sort': {'count': -1},
+        },
+      ],
+    );
+    print('Article count per category:');
+    for (final result in aggregateResponse.data) {
+      print('- ${result['_id']}: ${result['count']}');
+    }
 
   } on HtHttpException catch (e) {
     print('An error occurred: ${e.message}');
