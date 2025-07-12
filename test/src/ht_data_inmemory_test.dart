@@ -729,5 +729,169 @@ void main() {
         });
       });
     });
+
+    group('count', () {
+      late HtDataInMemory<Article> clientWithData;
+
+      setUp(() {
+        clientWithData = HtDataInMemory<Article>(
+          getId: (article) => article.id,
+          toJson: (article) => article.toJson(),
+          initialData: createTestArticles(10),
+        );
+      });
+
+      test('should return the total count of all items', () async {
+        final response = await clientWithData.count();
+        expect(response.data, 10);
+      });
+
+      test('should return the count of items matching a filter', () async {
+        final filter = {'isPublished': true}; // 5 articles are published
+        final response = await clientWithData.count(filter: filter);
+        expect(response.data, 5);
+      });
+
+      test('should return 0 for a filter with no matches', () async {
+        final filter = {'title': 'Non-existent Title'};
+        final response = await clientWithData.count(filter: filter);
+        expect(response.data, 0);
+      });
+
+      test('should return the correct count for a user scope', () async {
+        const userId = 'user-xyz';
+        await clientWithData.create(
+          item: Article(
+            id: 'user-article-1',
+            title: 'User Article 1',
+            category: Category(id: 'cat-1', name: 'Category 1'),
+          ),
+          userId: userId,
+        );
+        await clientWithData.create(
+          item: Article(
+            id: 'user-article-2',
+            title: 'User Article 2',
+            category: Category(id: 'cat-2', name: 'Category 2'),
+          ),
+          userId: userId,
+        );
+
+        final response = await clientWithData.count(userId: userId);
+        expect(response.data, 2);
+      });
+    });
+
+    group('aggregate', () {
+      late HtDataInMemory<Article> clientWithData;
+
+      setUp(() {
+        clientWithData = HtDataInMemory<Article>(
+          getId: (article) => article.id,
+          toJson: (article) => article.toJson(),
+          initialData: createTestArticles(10),
+        );
+      });
+
+      test('should process a simple $match stage', () async {
+        final pipeline = [
+          {
+            r'$match': {'isPublished': true},
+          },
+        ];
+        final response = await clientWithData.aggregate(pipeline: pipeline);
+        expect(response.data.length, 5);
+        expect(response.data.every((item) => item['isPublished'] == true), isTrue);
+      });
+
+      test('should process a $group stage with $sum accumulator', () async {
+        final pipeline = [
+          {
+            r'$group': {
+              '_id': r'$category.id',
+              'count': {r'$sum': 1},
+            },
+          },
+          {
+            r'$sort': {'_id': 1},
+          },
+        ];
+
+        final response = await clientWithData.aggregate(pipeline: pipeline);
+
+        expect(response.data.length, 2);
+        expect(response.data[0], {'_id': 'cat-0', 'count': 5});
+        expect(response.data[1], {'_id': 'cat-1', 'count': 5});
+      });
+
+      test('should process a $sort stage', () async {
+        final pipeline = [
+          {
+            r'$sort': {'rating': -1},
+          },
+        ];
+        final response = await clientWithData.aggregate(pipeline: pipeline);
+        expect(response.data.length, 10);
+        expect(response.data.first['rating'], 12.0); // Highest rating
+        expect(response.data.last['rating'], 3.0); // Lowest rating
+      });
+
+      test('should process a $limit stage', () async {
+        final pipeline = [
+          {r'$limit': 3},
+        ];
+        final response = await clientWithData.aggregate(pipeline: pipeline);
+        expect(response.data.length, 3);
+      });
+
+      test('should process a complex pipeline ($group, $sort, $limit)',
+          () async {
+        final pipeline = [
+          {
+            r'$group': {
+              '_id': r'$category.name',
+              'totalRating': {r'$sum': r'$rating'},
+            },
+          },
+          {
+            r'$sort': {'totalRating': -1},
+          },
+          {r'$limit': 1},
+        ];
+
+        final response = await clientWithData.aggregate(pipeline: pipeline);
+
+        // Category 1 has higher ratings (odd numbers)
+        expect(response.data.length, 1);
+        expect(response.data.first['_id'], 'Category 1');
+        expect(response.data.first['totalRating'], 4.0 + 6.0 + 8.0 + 10.0 + 12.0);
+      });
+
+      test('should process a pipeline within a user scope', () async {
+        const userId = 'user-agg';
+        await clientWithData.create(
+          item: Article(
+            id: 'user-article-1',
+            title: 'User Article 1',
+            category: Category(id: 'cat-user', name: 'User Category'),
+          ),
+          userId: userId,
+        );
+
+        final pipeline = [
+          {
+            r'$group': {
+              '_id': r'$category.id',
+              'count': {r'$sum': 1},
+            },
+          },
+        ];
+
+        final response =
+            await clientWithData.aggregate(pipeline: pipeline, userId: userId);
+        expect(response.data.length, 1);
+        expect(response.data.first, {'_id': 'cat-user', 'count': 1});
+      });
+    });
   });
 }
