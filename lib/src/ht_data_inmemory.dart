@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_dynamic_calls, cascade_invocations
+
 import 'dart:async';
 import 'dart:math';
 
@@ -402,7 +404,8 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     var allItems = userJsonStorage.values.toList();
 
     if (filter != null && filter.isNotEmpty) {
-      allItems = allItems.where((item) => _matchesFilter(item, filter)).toList();
+      allItems =
+          allItems.where((item) => _matchesFilter(item, filter)).toList();
     }
 
     return SuccessApiResponse(
@@ -428,11 +431,14 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
       switch (stageName) {
         case r'$match':
-          results = _processMatchStage(results, stageSpec as Map<String, dynamic>);
+          results =
+              _processMatchStage(results, stageSpec as Map<String, dynamic>);
         case r'$group':
-          results = _processGroupStage(results, stageSpec as Map<String, dynamic>);
+          results =
+              _processGroupStage(results, stageSpec as Map<String, dynamic>);
         case r'$sort':
-          results = _processSortStage(results, stageSpec as Map<String, dynamic>);
+          results =
+              _processSortStage(results, stageSpec as Map<String, dynamic>);
         case r'$limit':
           results = _processLimitStage(results, stageSpec as int);
         default:
