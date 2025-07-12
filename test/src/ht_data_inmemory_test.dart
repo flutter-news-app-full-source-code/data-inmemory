@@ -793,7 +793,7 @@ void main() {
         );
       });
 
-      test('should process a simple $match stage', () async {
+      test(r'should process a simple $match stage', () async {
         final pipeline = [
           {
             r'$match': {'isPublished': true},
@@ -804,7 +804,7 @@ void main() {
         expect(response.data.every((item) => item['isPublished'] == true), isTrue);
       });
 
-      test('should process a $group stage with $sum accumulator', () async {
+      test(r'should process a $group stage with $sum accumulator', () async {
         final pipeline = [
           {
             r'$group': {
@@ -824,7 +824,7 @@ void main() {
         expect(response.data[1], {'_id': 'cat-1', 'count': 5});
       });
 
-      test('should process a $sort stage', () async {
+      test(r'should process a $sort stage', () async {
         final pipeline = [
           {
             r'$sort': {'rating': -1},
@@ -836,7 +836,7 @@ void main() {
         expect(response.data.last['rating'], 3.0); // Lowest rating
       });
 
-      test('should process a $limit stage', () async {
+      test(r'should process a $limit stage', () async {
         final pipeline = [
           {r'$limit': 3},
         ];
@@ -844,7 +844,7 @@ void main() {
         expect(response.data.length, 3);
       });
 
-      test('should process a complex pipeline ($group, $sort, $limit)',
+      test(r'should process a complex pipeline ($group, $sort, $limit)',
           () async {
         final pipeline = [
           {
