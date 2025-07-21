@@ -160,7 +160,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
         filter != null ? Map<String, dynamic>.from(filter) : null;
 
     // Special handling for 'q' search parameter
-    final String? searchTerm = effectiveFilter?.remove('q') as String?;
+    final searchTerm = effectiveFilter?.remove('q') as String?;
 
     // 1. Apply filtering if a filter is provided
     if (effectiveFilter != null && effectiveFilter.isNotEmpty) {
