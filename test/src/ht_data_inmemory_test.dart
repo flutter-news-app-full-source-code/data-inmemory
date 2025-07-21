@@ -802,7 +802,9 @@ void main() {
         final response = await clientWithData.aggregate(pipeline: pipeline);
         expect(response.data.length, 5);
         expect(
-            response.data.every((item) => item['isPublished'] == true), isTrue);
+          response.data.every((item) => item['isPublished'] == true),
+          isTrue,
+        );
       });
 
       test(r'should process a $group stage with $sum accumulator', () async {
@@ -866,7 +868,9 @@ void main() {
         expect(response.data.length, 1);
         expect(response.data.first['_id'], 'Category 1');
         expect(
-            response.data.first['totalRating'], 4.0 + 6.0 + 8.0 + 10.0 + 12.0);
+          response.data.first['totalRating'],
+          4.0 + 6.0 + 8.0 + 10.0 + 12.0,
+        );
       });
 
       test('should process a pipeline within a user scope', () async {
