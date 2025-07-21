@@ -1,6 +1,6 @@
 # ht_data_inmemory
 
-![coverage: 98%](https://img.shields.io/badge/coverage-98-green)
+![coverage: 97%](https://img.shields.io/badge/coverage-97-green)
 [![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis)
 [![License: PolyForm Free Trial](https://img.shields.io/badge/License-PolyForm%20Free%20Trial-blue)](https://polyformproject.org/licenses/free-trial/1.0.0)
 
@@ -12,9 +12,9 @@ An in-memory implementation of the `HtDataClient` interface, designed primarily 
 - Standard CRUD (Create, Read, Update, Delete) operations.
 - User-scoped data: Operations can be tied to a specific `userId`.
 - Global data: Operations can target data not associated with any user.
-- Rich, document-style querying via the `readAll` method's `filter` parameter, which supports:
-    - Filtering on nested object properties using dot-notation (e.g., `category.id`).
-    - Operators like `$in`, `$nin`, `$ne`, `$gte`, `$gt`, `$lte`, and `$lt`.
+- Rich, document-style querying via the `readAll` method's `filter` parameter.
+- **General Filtering:** Supports operators like `$in`, `$nin`, `$ne`, `$gte`, etc., on any field, including nested ones (`category.id`).
+- **Simulated Full-Text Search:** Accepts a special `q` key in the filter (`{'q': 'search term'}`) to perform a case-insensitive substring search on the primary text field of a model (`title` for headlines, `name` for topics/sources).
 - Multi-field sorting via a list of `SortOption` objects.
 - Cursor-based pagination via the `PaginationOptions` object.
 
@@ -128,9 +128,10 @@ void main() async {
         await client.read(id: 'article1');
     print('Read: ${readResponse.data.title}');
 
-    // Query articles with filter, sort, and pagination
+    // Query articles with a search term and other filters
     final filter = {
-      'title': {'\$ne': 'Some Other Title'} // Not equal to
+      'q': 'article', // Search for 'article' in title
+      'content': {'\$ne': null} // And content is not null
     };
     final sort = [const SortOption('title', SortOrder.desc)];
     final pagination = const PaginationOptions(limit: 5);

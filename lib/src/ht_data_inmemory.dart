@@ -17,21 +17,19 @@ import 'package:logging/logging.dart';
 /// **ID Management:** Relies on the provided `getId` function to extract
 /// unique IDs from items. It does not generate IDs.
 ///
-/// **Querying (`readAllByQuery`):**
-/// - Matches against the JSON representation of items.
-/// - **Nested Properties:** Supports dot-notation (e.g., `'category.id'`).
-/// - **`_in` Suffix (Case-Insensitive):** For keys like `'category.id_in'`,
-///   the query value is a comma-separated string. Checks if the item's
-///   field value (lowercased string) is in the list of query values
-///   (also lowercased).
-/// - **`_contains` Suffix (Case-Insensitive):** For keys like
-///   `'title_contains'`, performs a case-insensitive substring check.
-///   If multiple `_contains` keys are provided (e.g. from a `q` param
-///   searching multiple fields), they are ORed.
-/// - **Exact Match:** For other keys, compares the item's field value
-///   (as a string) with the query value (string).
-/// - **Logic:** Non-`_contains` filters are ANDed. The result of this is
-///   then ANDed with the result of ORing all `_contains` filters.
+/// **Querying (`readAll`):**
+/// - **General Filtering:** Supports filtering on any property in the item's
+///   JSON representation, including nested properties using dot-notation
+///   (e.g., `'category.id'`). It supports operators like `$in`, `$ne`, `$gte`, etc.
+/// - **Special Search Query (`q`):** To simulate a full-text search, the
+///   `filter` map accepts a special key: `'q'`.
+///   - When `filter: {'q': 'search term'}` is provided, the client performs a
+///     case-insensitive substring search.
+///   - The search is performed on the `title` field for `Headline` types, and
+///     on the `name` field for `Topic` and `Source` types.
+///   - The `q` key is processed separately and removed from the filter before
+///     other conditions are evaluated, allowing search and other filters to be
+///     combined.
 /// {@endtemplate}
 class HtDataInMemory<T> implements HtDataClient<T> {
   /// {@macro ht_data_inmemory}
@@ -158,12 +156,17 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     var allItems = userStorage.values.toList();
+    final effectiveFilter =
+        filter != null ? Map<String, dynamic>.from(filter) : null;
+
+    // Special handling for 'q' search parameter
+    final String? searchTerm = effectiveFilter?.remove('q') as String?;
 
     // 1. Apply filtering if a filter is provided
-    if (filter != null && filter.isNotEmpty) {
+    if (effectiveFilter != null && effectiveFilter.isNotEmpty) {
       final allJsonItems = userJsonStorage.values.toList();
       final matchedJsonItems = allJsonItems.where((jsonItem) {
-        return _matchesFilter(jsonItem, filter);
+        return _matchesFilter(jsonItem, effectiveFilter);
       }).toList();
       // Get the original items from the matched JSON items
       final matchedIds =
@@ -172,7 +175,19 @@ class HtDataInMemory<T> implements HtDataClient<T> {
           allItems.where((item) => matchedIds.contains(_getId(item))).toList();
     }
 
-    // 2. Apply sorting if sort options are provided
+    // 2. Apply search term filtering if 'q' was provided
+    if (searchTerm != null && searchTerm.isNotEmpty) {
+      final allJsonItems = allItems.map(_toJson).toList();
+      final matchedJsonItems = allJsonItems.where((jsonItem) {
+        return _matchesSearchQuery(jsonItem, searchTerm);
+      }).toList();
+      final matchedIds =
+          matchedJsonItems.map((json) => json['id'] as String).toSet();
+      allItems =
+          allItems.where((item) => matchedIds.contains(_getId(item))).toList();
+    }
+
+    // 3. Apply sorting if sort options are provided
     if (sort != null && sort.isNotEmpty) {
       _sortItems(allItems, sort);
     }
@@ -214,6 +229,34 @@ class HtDataInMemory<T> implements HtDataClient<T> {
       }
     }
     return true; // All conditions passed
+  }
+
+  /// Checks if a given [jsonItem] matches the search query.
+  bool _matchesSearchQuery(Map<String, dynamic> jsonItem, String searchTerm) {
+    if (searchTerm.isEmpty) return true;
+    final lowercasedSearchTerm = searchTerm.toLowerCase();
+
+    // Determine which field to search based on the item's 'type'
+    final type = jsonItem['type'] as String?;
+    String? fieldValue;
+
+    switch (type) {
+      case 'headline':
+        fieldValue = jsonItem['title'] as String?;
+      case 'topic':
+      case 'source':
+        fieldValue = jsonItem['name'] as String?;
+      default:
+        // If type is unknown or doesn't have a designated search field,
+        // it cannot match.
+        return false;
+    }
+
+    if (fieldValue != null) {
+      return fieldValue.toLowerCase().contains(lowercasedSearchTerm);
+    }
+
+    return false;
   }
 
   /// Evaluates a single operator condition (e.g., {'$in': [...]}).

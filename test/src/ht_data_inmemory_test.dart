@@ -41,6 +41,7 @@ class Article extends Equatable {
         'isPublished': isPublished,
         'rating': rating,
         'publishedAt': publishedAt?.toIso8601String(),
+        'type': 'headline', // Add type for search query simulation
       };
 
   @override
@@ -570,6 +571,56 @@ void main() {
             response.data.items.every((a) => a.category.name == 'Category 1'),
             isTrue,
           );
+        });
+
+        test('should filter using the special "q" search parameter', () async {
+          // Arrange
+          final filter = {'q': 'Article 1'}; // Matches 'Article 1'
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 1);
+          expect(response.data.items.first.title, 'Article 1');
+        });
+
+        test(
+            'should correctly perform case-insensitive partial search with "q"',
+            () async {
+          // Arrange
+          final filter = {'q': 'rticle 2'}; // Matches 'Article 2'
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 1);
+          expect(response.data.items.first.title, 'Article 2');
+        });
+
+        test('should return no results for a non-matching "q" search',
+            () async {
+          // Arrange
+          final filter = {'q': 'NonExistent'};
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items, isEmpty);
+        });
+
+        test('should combine "q" search with other filters', () async {
+          // Arrange: Search for 'Article' (matches all) but only published
+          final filter = {'q': 'Article', 'isPublished': true};
+
+          // Act
+          final response = await clientWithData.readAll(filter: filter);
+
+          // Assert
+          expect(response.data.items.length, 5);
+          expect(response.data.items.every((a) => a.isPublished), isTrue);
         });
       });
 
