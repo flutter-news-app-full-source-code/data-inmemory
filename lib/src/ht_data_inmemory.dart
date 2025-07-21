@@ -28,10 +28,8 @@ import 'package:logging/logging.dart';
 ///   - The search is performed on the `title` field for `Headline` types, and
 ///     on the `name` field for `Topic` and `Source` types.
 ///   - The `q` key is processed separately and removed from the filter before
-/// - **Exact Match:** For other keys, compares the item's field value
-///   (as a string) with the query value (string).
-/// - **Logic:** Non-`_contains` filters are ANDed. The result of this is
-///   then ANDed with the result of ORing all `_contains` filters.
+///     other conditions are evaluated, allowing search and other filters to be
+///     combined.
 /// {@endtemplate}
 class HtDataInMemory<T> implements HtDataClient<T> {
   /// {@macro ht_data_inmemory}
