@@ -1,8 +1,8 @@
 // ignore_for_file: prefer_const_constructors, use_is_even_rather_than_modulo
 
 import 'package:equatable/equatable.dart';
-import 'package:ht_data_inmemory/ht_data_inmemory.dart';
-import 'package:ht_shared/ht_shared.dart';
+import 'package:data_inmemory/data_inmemory.dart';
+import 'package:core/core.dart';
 import 'package:test/test.dart';
 
 class Category extends Equatable {
@@ -45,8 +45,14 @@ class Article extends Equatable {
       };
 
   @override
-  List<Object?> get props =>
-      [id, title, category, isPublished, rating, publishedAt];
+  List<Object?> get props => [
+        id,
+        title,
+        category,
+        isPublished,
+        rating,
+        publishedAt,
+      ];
 }
 
 List<Article> createTestArticles(int count) {
@@ -63,13 +69,13 @@ List<Article> createTestArticles(int count) {
 }
 
 void main() {
-  group('HtDataInMemory', () {
-    late HtDataInMemory<Article> client;
+  group('DataInMemory', () {
+    late DataInMemory<Article> client;
     late List<Article> initialArticles;
 
     setUp(() {
       initialArticles = createTestArticles(3);
-      client = HtDataInMemory<Article>(
+      client = DataInMemory<Article>(
         getId: (article) => article.id,
         toJson: (article) => article.toJson(),
       );
@@ -77,15 +83,12 @@ void main() {
 
     group('constructor', () {
       test('can be instantiated', () {
-        expect(
-          client,
-          isA<HtDataInMemory<Article>>(),
-        );
+        expect(client, isA<DataInMemory<Article>>());
       });
 
       test('loads initialData correctly', () async {
         // Arrange
-        final clientWithData = HtDataInMemory<Article>(
+        final clientWithData = DataInMemory<Article>(
           getId: (article) => article.id,
           toJson: (article) => article.toJson(),
           initialData: initialArticles,
@@ -112,7 +115,7 @@ void main() {
 
         // Act & Assert
         expect(
-          () => HtDataInMemory<Article>(
+          () => DataInMemory<Article>(
             getId: (article) => article.id,
             toJson: (article) => article.toJson(),
             initialData: articlesWithDuplicates,
@@ -152,8 +155,10 @@ void main() {
         expect(response.data, newArticle);
 
         // Verify it was stored in the user's scope
-        final readResponse =
-            await client.read(id: newArticle.id, userId: userId);
+        final readResponse = await client.read(
+          id: newArticle.id,
+          userId: userId,
+        );
         expect(readResponse.data, newArticle);
 
         // Verify it's not in the global scope
@@ -278,8 +283,10 @@ void main() {
 
         // Assert
         expect(response.data, updatedArticle);
-        final readResponse =
-            await client.read(id: userScopedArticleToUpdate.id, userId: userId);
+        final readResponse = await client.read(
+          id: userScopedArticleToUpdate.id,
+          userId: userId,
+        );
         expect(readResponse.data.title, 'Updated User-Scoped Title');
       });
 
@@ -370,13 +377,13 @@ void main() {
     });
 
     group('readAll', () {
-      late HtDataInMemory<Article> clientWithData;
+      late DataInMemory<Article> clientWithData;
       late List<Article> allArticles;
 
       setUp(() {
         // Create 10 articles for diverse testing scenarios
         allArticles = createTestArticles(10);
-        clientWithData = HtDataInMemory<Article>(
+        clientWithData = DataInMemory<Article>(
           getId: (article) => article.id,
           toJson: (article) => article.toJson(),
           initialData: allArticles,
@@ -404,17 +411,19 @@ void main() {
           expect(response.data.items.every((a) => a.isPublished), isTrue);
         });
 
-        test('should return an empty list for a filter with no matches',
-            () async {
-          // Arrange
-          final filter = {'title': 'Non-existent Title'};
+        test(
+          'should return an empty list for a filter with no matches',
+          () async {
+            // Arrange
+            final filter = {'title': 'Non-existent Title'};
 
-          // Act
-          final response = await clientWithData.readAll(filter: filter);
+            // Act
+            final response = await clientWithData.readAll(filter: filter);
 
-          // Assert
-          expect(response.data.items, isEmpty);
-        });
+            // Assert
+            expect(response.data.items, isEmpty);
+          },
+        );
 
         test('should filter correctly within a user scope', () async {
           // Arrange
@@ -555,23 +564,25 @@ void main() {
           expect(response.data.items.every((a) => a.rating < 5.0), isTrue);
         });
 
-        test('should filter using dot-notation for nested properties',
-            () async {
-          // Arrange
-          final filter = {
-            'category.name': 'Category 1',
-          }; // 5 articles are in Category 1
+        test(
+          'should filter using dot-notation for nested properties',
+          () async {
+            // Arrange
+            final filter = {
+              'category.name': 'Category 1',
+            }; // 5 articles are in Category 1
 
-          // Act
-          final response = await clientWithData.readAll(filter: filter);
+            // Act
+            final response = await clientWithData.readAll(filter: filter);
 
-          // Assert
-          expect(response.data.items.length, 5);
-          expect(
-            response.data.items.every((a) => a.category.name == 'Category 1'),
-            isTrue,
-          );
-        });
+            // Assert
+            expect(response.data.items.length, 5);
+            expect(
+              response.data.items.every((a) => a.category.name == 'Category 1'),
+              isTrue,
+            );
+          },
+        );
 
         test('should filter using the special "q" search parameter', () async {
           // Arrange
@@ -586,30 +597,33 @@ void main() {
         });
 
         test(
-            'should correctly perform case-insensitive partial search with "q"',
-            () async {
-          // Arrange
-          final filter = {'q': 'rticle 2'}; // Matches 'Article 2'
+          'should correctly perform case-insensitive partial search with "q"',
+          () async {
+            // Arrange
+            final filter = {'q': 'rticle 2'}; // Matches 'Article 2'
 
-          // Act
-          final response = await clientWithData.readAll(filter: filter);
+            // Act
+            final response = await clientWithData.readAll(filter: filter);
 
-          // Assert
-          expect(response.data.items.length, 1);
-          expect(response.data.items.first.title, 'Article 2');
-        });
+            // Assert
+            expect(response.data.items.length, 1);
+            expect(response.data.items.first.title, 'Article 2');
+          },
+        );
 
-        test('should return no results for a non-matching "q" search',
-            () async {
-          // Arrange
-          final filter = {'q': 'NonExistent'};
+        test(
+          'should return no results for a non-matching "q" search',
+          () async {
+            // Arrange
+            final filter = {'q': 'NonExistent'};
 
-          // Act
-          final response = await clientWithData.readAll(filter: filter);
+            // Act
+            final response = await clientWithData.readAll(filter: filter);
 
-          // Assert
-          expect(response.data.items, isEmpty);
-        });
+            // Assert
+            expect(response.data.items, isEmpty);
+          },
+        );
 
         test('should combine "q" search with other filters', () async {
           // Arrange: Search for 'Article' (matches all) but only published
@@ -672,10 +686,7 @@ void main() {
           // Assert: First 5 items have non-null dates and are sorted
           final nonNullItems = items.take(5).toList();
           expect(nonNullItems.every((a) => a.publishedAt != null), isTrue);
-          expect(
-            nonNullItems.first.publishedAt,
-            DateTime(2024),
-          ); // Article 0
+          expect(nonNullItems.first.publishedAt, DateTime(2024)); // Article 0
           expect(
             nonNullItems.last.publishedAt,
             DateTime(2024).add(Duration(days: 8)),
@@ -719,19 +730,23 @@ void main() {
           expect(response.data.cursor, isNull);
         });
 
-        test('should set hasMore to false when items are less than limit',
-            () async {
-          // Arrange
-          final pagination = PaginationOptions(limit: 15);
+        test(
+          'should set hasMore to false when items are less than limit',
+          () async {
+            // Arrange
+            final pagination = PaginationOptions(limit: 15);
 
-          // Act
-          final response = await clientWithData.readAll(pagination: pagination);
+            // Act
+            final response = await clientWithData.readAll(
+              pagination: pagination,
+            );
 
-          // Assert
-          expect(response.data.items.length, 10);
-          expect(response.data.hasMore, isFalse);
-          expect(response.data.cursor, isNull);
-        });
+            // Assert
+            expect(response.data.items.length, 10);
+            expect(response.data.hasMore, isFalse);
+            expect(response.data.cursor, isNull);
+          },
+        );
 
         test('should fetch the next page correctly using a cursor', () async {
           // Arrange: sort by ID for predictable order
@@ -751,8 +766,10 @@ void main() {
           expect(cursor, 'id-3');
 
           // Act: Get the second page using the cursor
-          final secondPagePagination =
-              PaginationOptions(limit: 4, cursor: cursor);
+          final secondPagePagination = PaginationOptions(
+            limit: 4,
+            cursor: cursor,
+          );
           final secondResponse = await clientWithData.readAll(
             sort: sort,
             pagination: secondPagePagination,
@@ -782,10 +799,10 @@ void main() {
     });
 
     group('count', () {
-      late HtDataInMemory<Article> clientWithData;
+      late DataInMemory<Article> clientWithData;
 
       setUp(() {
-        clientWithData = HtDataInMemory<Article>(
+        clientWithData = DataInMemory<Article>(
           getId: (article) => article.id,
           toJson: (article) => article.toJson(),
           initialData: createTestArticles(10),
@@ -834,10 +851,10 @@ void main() {
     });
 
     group('aggregate', () {
-      late HtDataInMemory<Article> clientWithData;
+      late DataInMemory<Article> clientWithData;
 
       setUp(() {
-        clientWithData = HtDataInMemory<Article>(
+        clientWithData = DataInMemory<Article>(
           getId: (article) => article.id,
           toJson: (article) => article.toJson(),
           initialData: createTestArticles(10),
@@ -898,31 +915,33 @@ void main() {
         expect(response.data.length, 3);
       });
 
-      test(r'should process a complex pipeline ($group, $sort, $limit)',
-          () async {
-        final pipeline = [
-          {
-            r'$group': {
-              '_id': r'$category.name',
-              'totalRating': {r'$sum': r'$rating'},
+      test(
+        r'should process a complex pipeline ($group, $sort, $limit)',
+        () async {
+          final pipeline = [
+            {
+              r'$group': {
+                '_id': r'$category.name',
+                'totalRating': {r'$sum': r'$rating'},
+              },
             },
-          },
-          {
-            r'$sort': {'totalRating': -1},
-          },
-          {r'$limit': 1},
-        ];
+            {
+              r'$sort': {'totalRating': -1},
+            },
+            {r'$limit': 1},
+          ];
 
-        final response = await clientWithData.aggregate(pipeline: pipeline);
+          final response = await clientWithData.aggregate(pipeline: pipeline);
 
-        // Category 1 has higher ratings (odd numbers)
-        expect(response.data.length, 1);
-        expect(response.data.first['_id'], 'Category 1');
-        expect(
-          response.data.first['totalRating'],
-          4.0 + 6.0 + 8.0 + 10.0 + 12.0,
-        );
-      });
+          // Category 1 has higher ratings (odd numbers)
+          expect(response.data.length, 1);
+          expect(response.data.first['_id'], 'Category 1');
+          expect(
+            response.data.first['totalRating'],
+            4.0 + 6.0 + 8.0 + 10.0 + 12.0,
+          );
+        },
+      );
 
       test('should process a pipeline within a user scope', () async {
         const userId = 'user-agg';
@@ -944,8 +963,10 @@ void main() {
           },
         ];
 
-        final response =
-            await clientWithData.aggregate(pipeline: pipeline, userId: userId);
+        final response = await clientWithData.aggregate(
+          pipeline: pipeline,
+          userId: userId,
+        );
         expect(response.data.length, 1);
         expect(response.data.first, {'_id': 'cat-user', 'count': 1});
       });

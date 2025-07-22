@@ -3,12 +3,12 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:ht_data_client/ht_data_client.dart';
-import 'package:ht_shared/ht_shared.dart';
+import 'package:core/core.dart';
+import 'package:data_client/data_client.dart';
 import 'package:logging/logging.dart';
 
-/// {@template ht_data_inmemory}
-/// An in-memory implementation of [HtDataClient] for testing or local
+/// {@template data_inmemory}
+/// An in-memory implementation of [DataClient] for testing or local
 /// development.
 ///
 /// This client simulates a remote data source by storing data in memory.
@@ -31,16 +31,16 @@ import 'package:logging/logging.dart';
 ///     other conditions are evaluated, allowing search and other filters to be
 ///     combined.
 /// {@endtemplate}
-class HtDataInMemory<T> implements HtDataClient<T> {
-  /// {@macro ht_data_inmemory}
-  HtDataInMemory({
+class DataInMemory<T> implements DataClient<T> {
+  /// {@macro data_inmemory}
+  DataInMemory({
     required ToJson<T> toJson,
     required String Function(T item) getId,
     List<T>? initialData,
     Logger? logger,
   })  : _toJson = toJson,
         _getId = getId,
-        _logger = logger ?? Logger('HtDataInMemory<$T>') {
+        _logger = logger ?? Logger('DataInMemory<$T>') {
     // Initialize global storage once
     _userScopedStorage.putIfAbsent(_globalDataKey, () => <String, T>{});
     _userScopedJsonStorage.putIfAbsent(
@@ -348,8 +348,9 @@ class HtDataInMemory<T> implements HtDataClient<T> {
   ) {
     var startIndex = 0;
     if (startAfterId != null) {
-      final index =
-          allMatchingItems.indexWhere((item) => _getId(item) == startAfterId);
+      final index = allMatchingItems.indexWhere(
+        (item) => _getId(item) == startAfterId,
+      );
       if (index != -1) {
         startIndex = index + 1;
       } else {
@@ -397,8 +398,10 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
     final incomingId = _getId(item);
     if (incomingId != id) {
-      _logger.warning('Update FAILED: ID mismatch: incoming '
-          '"$incomingId", path "$id" for scope "$scope".');
+      _logger.warning(
+        'Update FAILED: ID mismatch: incoming '
+        '"$incomingId", path "$id" for scope "$scope".',
+      );
       throw BadRequestException(
         'Item ID ("$incomingId") does not match path ID ("$id") for "$scope".',
       );
@@ -417,10 +420,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
   }
 
   @override
-  Future<void> delete({
-    required String id,
-    String? userId,
-  }) async {
+  Future<void> delete({required String id, String? userId}) async {
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final scope = userId ?? 'global';
@@ -434,8 +434,10 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     }
     userStorage.remove(id);
     userJsonStorage.remove(id);
-    _logger.info('Delete SUCCESS: id="$id" deleted for scope "$scope". '
-        'Total items: ${userStorage.length}');
+    _logger.info(
+      'Delete SUCCESS: id="$id" deleted for scope "$scope". '
+      'Total items: ${userStorage.length}',
+    );
   }
 
   @override
@@ -474,14 +476,20 @@ class HtDataInMemory<T> implements HtDataClient<T> {
 
       switch (stageName) {
         case r'$match':
-          results =
-              _processMatchStage(results, stageSpec as Map<String, dynamic>);
+          results = _processMatchStage(
+            results,
+            stageSpec as Map<String, dynamic>,
+          );
         case r'$group':
-          results =
-              _processGroupStage(results, stageSpec as Map<String, dynamic>);
+          results = _processGroupStage(
+            results,
+            stageSpec as Map<String, dynamic>,
+          );
         case r'$sort':
-          results =
-              _processSortStage(results, stageSpec as Map<String, dynamic>);
+          results = _processSortStage(
+            results,
+            stageSpec as Map<String, dynamic>,
+          );
         case r'$limit':
           results = _processLimitStage(results, stageSpec as int);
         default:
@@ -517,10 +525,7 @@ class HtDataInMemory<T> implements HtDataClient<T> {
     for (final item in input) {
       // Remove '$' prefix from field path
       final idValue = _getNestedValue(item, idExpression.substring(1));
-      final group = groupedResults.putIfAbsent(
-        idValue,
-        () => {'_id': idValue},
-      );
+      final group = groupedResults.putIfAbsent(idValue, () => {'_id': idValue});
 
       // Process accumulators
       for (final entry in groupSpec.entries) {
