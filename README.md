@@ -4,7 +4,7 @@
 [![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis)
 [![License: PolyForm Free Trial](https://img.shields.io/badge/License-PolyForm%20Free%20Trial-blue)](https://polyformproject.org/licenses/free-trial/1.0.0)
 
-An in-memory implementation of the `DataClient` interface, designed primarily for testing, local development, or scenarios where a lightweight, non-persistent data store is sufficient. This package is part of the Headlines Toolkit (HT) ecosystem.
+An in-memory implementation of the `DataClient` interface, designed primarily for testing, local development, or scenarios where a lightweight, non-persistent data store is sufficient. This package is part of the [**Flutter News App - Full Source Code Toolkit**](https://github.com/flutter-news-app-full-source-code).
 
 ## Description
 
@@ -27,8 +27,7 @@ This client is useful for:
 
 This package is typically used as a development dependency or a direct dependency in projects that require an in-memory data store for local or test environments.
 
-To use this package, add `data_inmemory` to your `pubspec.yaml` dependencies. If it's from a Git repository (as it is within the HT ecosystem):
-
+To use this package, add `data_inmemory` to your `pubspec.yaml` dependencies.
 ```yaml
 dependencies:
   # data_client is also required as it defines the interface
@@ -177,6 +176,8 @@ void main() async {
 }
 ```
 
-## License
+## 🔑 Licensing
 
-This package is licensed under the [PolyForm Free Trial 1.0.0](LICENSE). Please review the terms before use.
+This package is source-available and licensed under the [PolyForm Free Trial 1.0.0](LICENSE). Please review the terms before use.
+
+For commercial licensing options that grant the right to build and distribute unlimited applications, please visit the main [**Flutter News App - Full Source Code Toolkit**](https://github.com/flutter-news-app-full-source-code) organization.
