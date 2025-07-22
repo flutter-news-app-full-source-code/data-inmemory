@@ -1,8 +1,8 @@
 // ignore_for_file: prefer_const_constructors, use_is_even_rather_than_modulo
 
-import 'package:equatable/equatable.dart';
-import 'package:data_inmemory/data_inmemory.dart';
 import 'package:core/core.dart';
+import 'package:data_inmemory/data_inmemory.dart';
+import 'package:equatable/equatable.dart';
 import 'package:test/test.dart';
 
 class Category extends Equatable {
