@@ -297,6 +297,13 @@ class DataInMemory<T> implements DataClient<T> {
 
   dynamic _getNestedValue(Map<String, dynamic> item, String dotPath) {
     if (dotPath.isEmpty) return null;
+
+    // First, check if the path exists directly at the top level.
+    if (item.containsKey(dotPath)) {
+      return item[dotPath];
+    }
+
+    // If not, proceed with nested lookup.
     final parts = dotPath.split('.');
     dynamic currentValue = item;
     for (final part in parts) {
