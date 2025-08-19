@@ -187,7 +187,7 @@ class DataInMemory<T> implements DataClient<T> {
     // Get the original items from the matched JSON items.
     final matchedIds =
         matchedJsonItems.map((json) => json['id'] as String).toSet();
-    var allItems = userStorage.values
+    final allItems = userStorage.values
         .where((item) => matchedIds.contains(_getId(item)))
         .toList();
 
@@ -266,11 +266,9 @@ class DataInMemory<T> implements DataClient<T> {
     switch (type) {
       case 'headline':
         fieldValue = jsonItem['title'] as String?;
-        break;
       case 'topic':
       case 'source':
         fieldValue = jsonItem['name'] as String?;
-        break;
       default:
         _logger.finer(
           '_matchesSearchQuery [id="$itemId"]: FAILED (unknown type "$type")',
