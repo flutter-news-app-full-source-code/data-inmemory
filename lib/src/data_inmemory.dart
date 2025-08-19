@@ -155,43 +155,33 @@ class DataInMemory<T> implements DataClient<T> {
   }) async {
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
-    var allItems = userStorage.values.toList();
     final effectiveFilter =
         filter != null ? Map<String, dynamic>.from(filter) : null;
 
-    // Special handling for 'q' search parameter
+    // Special handling for 'q' search parameter, which is removed from the
+    // main filter to be processed by a dedicated function.
     final searchTerm = effectiveFilter?.remove('q') as String?;
 
-    // 1. Apply filtering if a filter is provided
-    if (effectiveFilter != null && effectiveFilter.isNotEmpty) {
-      final allJsonItems = userJsonStorage.values.toList();
-      final matchedJsonItems = allJsonItems.where((jsonItem) {
-        return _matchesFilter(jsonItem, effectiveFilter);
-      }).toList();
-      // Get the original items from the matched JSON items
-      final matchedIds =
-          matchedJsonItems.map((json) => json['id'] as String).toSet();
-      allItems =
-          allItems.where((item) => matchedIds.contains(_getId(item))).toList();
-    }
+    // 1. Apply all filtering in a single pass.
+    // This is more efficient and ensures consistent behavior.
+    final allJsonItems = userJsonStorage.values.toList();
+    final matchedJsonItems = allJsonItems.where((jsonItem) {
+      return _itemMatchesAllFilters(jsonItem, effectiveFilter, searchTerm);
+    }).toList();
 
-    // 2. Apply search term filtering if 'q' was provided
-    if (searchTerm != null && searchTerm.isNotEmpty) {
-      final allJsonItems = allItems.map(_toJson).toList();
-      final matchedJsonItems = allJsonItems.where((jsonItem) {
-        return _matchesSearchQuery(jsonItem, searchTerm);
-      }).toList();
-      final matchedIds =
-          matchedJsonItems.map((json) => json['id'] as String).toSet();
-      allItems =
-          allItems.where((item) => matchedIds.contains(_getId(item))).toList();
-    }
+    // Get the original items from the matched JSON items.
+    final matchedIds =
+        matchedJsonItems.map((json) => json['id'] as String).toSet();
+    var allItems = userStorage.values
+        .where((item) => matchedIds.contains(_getId(item)))
+        .toList();
 
-    // 3. Apply sorting if sort options are provided
+    // 2. Apply sorting if sort options are provided
     if (sort != null && sort.isNotEmpty) {
       _sortItems(allItems, sort);
     }
 
+    // 3. Create the paginated response from the final sorted and filtered list.
     final paginatedResponse = _createPaginatedResponse(
       allItems,
       pagination?.cursor,
@@ -257,6 +247,30 @@ class DataInMemory<T> implements DataClient<T> {
     }
 
     return false;
+  }
+
+  /// Checks if a given [jsonItem] matches all conditions in the [filter]
+  /// and the [searchTerm].
+  bool _itemMatchesAllFilters(
+    Map<String, dynamic> jsonItem,
+    Map<String, dynamic>? filter,
+    String? searchTerm,
+  ) {
+    // Apply property filtering first
+    if (filter != null && filter.isNotEmpty) {
+      if (!_matchesFilter(jsonItem, filter)) {
+        return false;
+      }
+    }
+
+    // Apply search term filtering
+    if (searchTerm != null && searchTerm.isNotEmpty) {
+      if (!_matchesSearchQuery(jsonItem, searchTerm)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /// Evaluates a single operator condition (e.g., {'$in': [...]}).
