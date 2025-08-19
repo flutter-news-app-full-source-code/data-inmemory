@@ -91,14 +91,15 @@ class DataInMemory<T> implements DataClient<T> {
     String? userId,
   }) async {
     final id = _getId(item);
+    final scope = userId ?? 'global';
+    _logger.fine('CREATE START: id="$id", scope="$scope"');
+
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
-    final scope = userId ?? 'global';
-    _logger.fine('Create: id="$id", scope="$scope"');
 
     if (userStorage.containsKey(id)) {
       _logger.warning(
-        'Create FAILED: Item with ID "$id" already exists for scope "$scope".',
+        'CREATE FAILED: Item with ID "$id" already exists for scope "$scope".',
       );
       throw BadRequestException(
         'Item with ID "$id" already exists for user "$scope".',
@@ -108,7 +109,7 @@ class DataInMemory<T> implements DataClient<T> {
     userStorage[id] = item;
     userJsonStorage[id] = _toJson(item);
     _logger.info(
-      'Create SUCCESS: id="$id" added to scope "$scope". Total items: ${userStorage.length}',
+      'CREATE SUCCESS: id="$id" added to scope "$scope". Total items: ${userStorage.length}',
     );
     return SuccessApiResponse(
       data: item,
@@ -124,19 +125,19 @@ class DataInMemory<T> implements DataClient<T> {
     required String id,
     String? userId,
   }) async {
-    final userStorage = _getStorageForUser(userId);
     final scope = userId ?? 'global';
-    _logger.fine('Read: id="$id", scope="$scope"');
+    _logger.fine('READ START: id="$id", scope="$scope"');
+    final userStorage = _getStorageForUser(userId);
 
     final item = userStorage[id];
 
     if (item == null) {
-      _logger.warning('Read FAILED: id="$id" NOT FOUND for scope "$scope".');
+      _logger.warning('READ FAILED: id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for user "$scope".',
       );
     }
-    _logger.info('Read SUCCESS: id="$id" FOUND for scope "$scope".');
+    _logger.info('READ SUCCESS: id="$id" FOUND for scope "$scope".');
     return SuccessApiResponse(
       data: item,
       metadata: ResponseMetadata(
@@ -441,13 +442,13 @@ class DataInMemory<T> implements DataClient<T> {
     required T item,
     String? userId,
   }) async {
+    final scope = userId ?? 'global';
+    _logger.fine('UPDATE START: id="$id", scope="$scope"');
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
-    final scope = userId ?? 'global';
-    _logger.fine('Update: id="$id", scope="$scope"');
 
     if (!userStorage.containsKey(id)) {
-      _logger.warning('Update FAILED: id="$id" NOT FOUND for scope "$scope".');
+      _logger.warning('UPDATE FAILED: id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for update for user "$scope".',
       );
@@ -466,7 +467,7 @@ class DataInMemory<T> implements DataClient<T> {
 
     userStorage[id] = item;
     userJsonStorage[id] = _toJson(item);
-    _logger.info('Update SUCCESS: id="$id" updated for scope "$scope".');
+    _logger.info('UPDATE SUCCESS: id="$id" updated for scope "$scope".');
     return SuccessApiResponse(
       data: item,
       metadata: ResponseMetadata(
@@ -478,13 +479,13 @@ class DataInMemory<T> implements DataClient<T> {
 
   @override
   Future<void> delete({required String id, String? userId}) async {
+    final scope = userId ?? 'global';
+    _logger.fine('DELETE START: id="$id", scope="$scope"');
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
-    final scope = userId ?? 'global';
-    _logger.fine('Delete: id="$id", scope="$scope"');
 
     if (!userStorage.containsKey(id)) {
-      _logger.warning('Delete FAILED: id="$id" NOT FOUND for scope "$scope".');
+      _logger.warning('DELETE FAILED: id="$id" NOT FOUND for scope "$scope".');
       throw NotFoundException(
         'Item with ID "$id" not found for deletion for user "$scope".',
       );
@@ -492,7 +493,7 @@ class DataInMemory<T> implements DataClient<T> {
     userStorage.remove(id);
     userJsonStorage.remove(id);
     _logger.info(
-      'Delete SUCCESS: id="$id" deleted for scope "$scope". '
+      'DELETE SUCCESS: id="$id" deleted for scope "$scope". '
       'Total items: ${userStorage.length}',
     );
   }
@@ -502,6 +503,8 @@ class DataInMemory<T> implements DataClient<T> {
     String? userId,
     Map<String, dynamic>? filter,
   }) async {
+    final scope = userId ?? 'global';
+    _logger.fine('COUNT START: scope="$scope", filter="$filter"');
     final userJsonStorage = _getJsonStorageForUser(userId);
     var allItems = userJsonStorage.values.toList();
 
@@ -510,6 +513,7 @@ class DataInMemory<T> implements DataClient<T> {
           allItems.where((item) => _matchesFilter(item, filter)).toList();
     }
 
+    _logger.info('COUNT SUCCESS: scope="$scope", count=${allItems.length}');
     return SuccessApiResponse(
       data: allItems.length,
       metadata: ResponseMetadata(
@@ -524,6 +528,8 @@ class DataInMemory<T> implements DataClient<T> {
     required List<Map<String, dynamic>> pipeline,
     String? userId,
   }) async {
+    final scope = userId ?? 'global';
+    _logger.fine('AGGREGATE START: scope="$scope", pipeline="$pipeline"');
     final userJsonStorage = _getJsonStorageForUser(userId);
     var results = userJsonStorage.values.toList();
 
@@ -554,6 +560,9 @@ class DataInMemory<T> implements DataClient<T> {
       }
     }
 
+    _logger.info(
+      'AGGREGATE SUCCESS: scope="$scope", resultCount=${results.length}',
+    );
     return SuccessApiResponse(
       data: results,
       metadata: ResponseMetadata(
