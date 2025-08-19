@@ -153,6 +153,9 @@ class DataInMemory<T> implements DataClient<T> {
     PaginationOptions? pagination,
     List<SortOption>? sort,
   }) async {
+    final scope = userId ?? 'global';
+    _logger.fine('ReadAll START: scope="$scope", filter="$filter"');
+
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
     final effectiveFilter =
@@ -161,12 +164,23 @@ class DataInMemory<T> implements DataClient<T> {
     // Special handling for 'q' search parameter, which is removed from the
     // main filter to be processed by a dedicated function.
     final searchTerm = effectiveFilter?.remove('q') as String?;
+    _logger.fine(
+      'ReadAll PARAMS: effectiveFilter="$effectiveFilter", searchTerm="$searchTerm"',
+    );
 
     // 1. Apply all filtering in a single pass.
     // This is more efficient and ensures consistent behavior.
     final allJsonItems = userJsonStorage.values.toList();
+    _logger.fine('ReadAll: Total items to filter: ${allJsonItems.length}');
+
     final matchedJsonItems = allJsonItems.where((jsonItem) {
-      return _itemMatchesAllFilters(jsonItem, effectiveFilter, searchTerm);
+      final itemId = jsonItem['id'] as String?;
+      final matches =
+          _itemMatchesAllFilters(jsonItem, effectiveFilter, searchTerm);
+      _logger.finer(
+        'ReadAll FILTERING: item id="$itemId", matches="$matches"',
+      );
+      return matches;
     }).toList();
 
     // Get the original items from the matched JSON items.
@@ -201,29 +215,47 @@ class DataInMemory<T> implements DataClient<T> {
     Map<String, dynamic> jsonItem,
     Map<String, dynamic> filter,
   ) {
+    final itemId = jsonItem['id'] as String?;
+    _logger.finer('_matchesFilter: Checking item id="$itemId"');
+
     for (final entry in filter.entries) {
       final key = entry.key;
       final queryValue = entry.value;
       final itemValue = _getNestedValue(jsonItem, key);
 
+      _logger.finest(
+        '_matchesFilter [id="$itemId"]: key="$key", queryValue="$queryValue", itemValue="$itemValue"',
+      );
+
       if (queryValue is Map<String, dynamic>) {
         // Handle operators like $in, $gte, etc.
         if (!_evaluateOperator(itemValue, queryValue)) {
+          _logger.finer(
+            '_matchesFilter [id="$itemId"]: FAILED operator check for key="$key"',
+          );
           return false; // This condition failed
         }
       } else {
         // Simple exact match
         if (itemValue?.toString() != queryValue?.toString()) {
+          _logger.finer(
+            '_matchesFilter [id="$itemId"]: FAILED exact match for key="$key"',
+          );
           return false; // This condition failed
         }
       }
     }
+    _logger.finer('_matchesFilter: PASSED for item id="$itemId"');
     return true; // All conditions passed
   }
 
   /// Checks if a given [jsonItem] matches the search query.
   bool _matchesSearchQuery(Map<String, dynamic> jsonItem, String searchTerm) {
-    if (searchTerm.isEmpty) return true;
+    final itemId = jsonItem['id'] as String?;
+    if (searchTerm.isEmpty) {
+      _logger.finer('_matchesSearchQuery [id="$itemId"]: PASSED (empty term)');
+      return true;
+    }
     final lowercasedSearchTerm = searchTerm.toLowerCase();
 
     // Determine which field to search based on the item's 'type'
@@ -233,19 +265,29 @@ class DataInMemory<T> implements DataClient<T> {
     switch (type) {
       case 'headline':
         fieldValue = jsonItem['title'] as String?;
+        break;
       case 'topic':
       case 'source':
         fieldValue = jsonItem['name'] as String?;
+        break;
       default:
-        // If type is unknown or doesn't have a designated search field,
-        // it cannot match.
+        _logger.finer(
+          '_matchesSearchQuery [id="$itemId"]: FAILED (unknown type "$type")',
+        );
         return false;
     }
 
     if (fieldValue != null) {
-      return fieldValue.toLowerCase().contains(lowercasedSearchTerm);
+      final match = fieldValue.toLowerCase().contains(lowercasedSearchTerm);
+      _logger.finer(
+        '_matchesSearchQuery [id="$itemId"]: field="$fieldValue", term="$searchTerm", match="$match"',
+      );
+      return match;
     }
 
+    _logger.finer(
+      '_matchesSearchQuery [id="$itemId"]: FAILED (field value is null)',
+    );
     return false;
   }
 
