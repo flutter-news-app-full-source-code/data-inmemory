@@ -268,6 +268,7 @@ class DataInMemory<T> implements DataClient<T> {
         fieldValue = jsonItem['title'] as String?;
       case 'topic':
       case 'source':
+      case 'country':
         fieldValue = jsonItem['name'] as String?;
       default:
         _logger.finer(
