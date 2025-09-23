@@ -1,183 +1,42 @@
-# data_inmemory
+<div align="center">
+  <img src="https://avatars.githubusercontent.com/u/202675624?s=400&u=dc72a2b53e8158956a3b672f8e52e39394b6b610&v=4" alt="Flutter News App Toolkit Logo" width="220">
+  <h1>Data In-Memory</h1>
+  <p><strong>An in-memory implementation of the `DataClient` interface for the Flutter News App Toolkit.</strong></p>
+</div>
 
-![coverage: 97%](https://img.shields.io/badge/coverage-97-green)
-[![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis)
-[![License: PolyForm Free Trial](https://img.shields.io/badge/License-PolyForm%20Free%20Trial-blue)](https://polyformproject.org/licenses/free-trial/1.0.0)
+<p align="center">
+  <img src="https://img.shields.io/badge/coverage-95%25-green?style=for-the-badge" alt="coverage: 95%">
+  <a href="https://flutter-news-app-full-source-code.github.io/docs/"><img src="https://img.shields.io/badge/LIVE_DOCS-VIEW-slategray?style=for-the-badge" alt="Live Docs: View"></a>
+  <a href="https://github.com/flutter-news-app-full-source-code"><img src="https://img.shields.io/badge/MAIN_PROJECT-BROWSE-purple?style=for-the-badge" alt="Main Project: Browse"></a>
+</p>
 
-An in-memory implementation of the `DataClient` interface, designed primarily for testing, local development, or scenarios where a lightweight, non-persistent data store is sufficient. This package is part of the [**Flutter News App - Full Source Code Toolkit**](https://github.com/flutter-news-app-full-source-code).
+This `data_inmemory` package provides a lightweight, non-persistent in-memory implementation of the `DataClient` interface within the [**Flutter News App Full Source Code Toolkit**](https://github.com/flutter-news-app-full-source-code). It is designed primarily for testing, local development, or scenarios where a temporary data store is sufficient. This package allows for simulating a backend data source entirely in memory, supporting standard CRUD operations, advanced querying, and aggregation capabilities without requiring a live database connection.
 
-## Description
+## ⭐ Feature Showcase: Flexible In-Memory Data Management
 
-`DataInMemory` provides a way to simulate a backend data source entirely in memory. It supports:
-- Standard CRUD (Create, Read, Update, Delete) operations.
-- User-scoped data: Operations can be tied to a specific `userId`.
-- Global data: Operations can target data not associated with any user.
-- Rich, document-style querying via the `readAll` method's `filter` parameter.
-- **General Filtering:** Supports operators like `$in`, `$nin`, `$ne`, `$gte`, etc., on any field, including nested ones (`category.id`).
-- **Simulated Full-Text Search:** Accepts a special `q` key in the filter (`{'q': 'search term'}`) to perform a case-insensitive substring search on the primary text field of a model (`title` for headlines, `name` for topics/sources).
-- Multi-field sorting via a list of `SortOption` objects.
-- Cursor-based pagination via the `PaginationOptions` object.
+This package offers a comprehensive set of features for managing data entities in memory.
 
-This client is useful for:
-- Unit and integration testing of repositories or BLoCs that depend on `DataClient`.
-- Rapid prototyping and local development without needing a live backend.
-- Demonstrations or examples.
+<details>
+<summary><strong>🧱 Core Functionality</strong></summary>
 
-## Getting Started
+### 🚀 `DataClient` Implementation
+- **`DataInMemoryClient<T>` Class:** A concrete in-memory implementation of the `DataClient<T>` interface, enabling type-safe interactions with various data models.
+- **Flexible Initialization:** Supports `initialData` to pre-populate the client with existing data, accelerating setup for testing and development.
 
-This package is typically used as a development dependency or a direct dependency in projects that require an in-memory data store for local or test environments.
+### 🌐 Comprehensive Data Operations
+- **CRUD Operations:** Implements `create`, `read`, `update`, and `delete` methods for standard data manipulation.
+- **User-Scoped & Global Data:** Supports operations tied to a specific `userId` for user-scoped data, as well as operations targeting global data not associated with any user.
+- **Rich Document-Style Querying:** The `readAll` method supports advanced filtering with operators like `$in`, `$nin`, `$ne`, `$gte` on any field (including nested ones), multi-field sorting via `SortOption` objects, and cursor-based pagination via `PaginationOptions`.
+- **Simulated Full-Text Search:** Accepts a special `q` key in the filter (`{'q': 'search term'}`) to perform a case-insensitive substring search on designated primary text fields of a model (e.g., `title` for headlines, `name` for topics/sources).
+- **Efficient Counting & Aggregation:** Includes a `count` method for efficient document counting and an `aggregate` method to simulate basic MongoDB aggregation pipelines (supporting `$match`, `$group`, `$sort`, `$limit`), enabling testing of analytics-style queries.
 
-To use this package, add `data_inmemory` to your `pubspec.yaml` dependencies.
-```yaml
-dependencies:
-  # data_client is also required as it defines the interface
-  data_client:
-    git:
-      url: https://github.com/flutter-news-app-full-source-code/data-client.git
-      # ref: <specific_commit_or_tag> # Optional: pin to a version
-  data_inmemory:
-    git:
-      url: https://github.com/flutter-news-app-full-source-code/data-inmemory.git
-      # ref: <specific_commit_or_tag> # Optional: pin to a version
-  # core is needed for models and exceptions
-  core:
-    git:
-      url: https://github.com/flutter-news-app-full-source-code/core.git
-      # ref: <specific_commit_or_tag> # Optional: pin to a version
-```
+### 🛡️ Standardized Error Handling
+- **`HttpException` Propagation:** Throws standard exceptions from `package:core` (e.g., `NotFoundException`, `BadRequestException`) for consistent error handling, ensuring predictable error management across the application layers.
 
-Then run `dart pub get` or `flutter pub get`.
+> **💡 Your Advantage:** You get a meticulously designed, production-quality in-memory data client that simplifies testing, accelerates local development, and provides robust data management capabilities without the overhead of a persistent backend. This package is ideal for rapid prototyping and reliable unit/integration testing.
 
-## Features
-
-- Implements the `DataClient<T>` interface from `package:data_client`.
-- In-memory storage for generic data types `T`.
-- Support for `initialData` to pre-populate the client.
-- User-scoped and global data operations.
-- `create`, `read`, `update`, `delete` methods.
-- A unified `readAll` method with support for rich filtering, multi-field sorting, and cursor-based pagination.
-- Throws standard exceptions from `package:core` (e.g., `NotFoundException`, `BadRequestException`).
-- `count` method for efficient document counting without fetching data.
-- `aggregate` method to simulate basic MongoDB aggregation pipelines
-  (supports `$match`, `$group`, `$sort`, `$limit`), enabling testing of
-  analytics-style queries.
-
-## Usage
-
-Here's a basic example of how to use `DataInMemoryClient` with a simple `Article` model:
-
-```dart
-import 'package:data_client/data_client.dart'; // Defines DataClient
-import 'package:data_inmemory/data_inmemory.dart';
-import 'package:core/core.dart'; // Assuming SuccessApiResponse etc. are here
-
-// 1. Define your model (ensure it has an ID and toJson method)
-class Article {
-  Article({required this.id, required this.title, this.content});
-  final String id;
-  final String title; 
-  final String? content;
-
-  // Required for DataInMemoryClient
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        // Add other fields for querying
-        if (content != null) 'content': content,
-      };
-  
-  // For easy comparison in examples/tests
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Article &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          title == other.title &&
-          content == other.content;
-
-  @override
-  int get hashCode => id.hashCode ^ title.hashCode ^ content.hashCode;
-}
-
-void main() async {
-  // 2. Define helper functions for the client
-  String getArticleId(Article article) => article.id;
-  Map<String, dynamic> articleToJson(Article article) => article.toJson();
-
-  // 3. Instantiate the client
-  final client = DataInMemoryClient<Article>(
-    getId: getArticleId,
-    toJson: articleToJson,
-    initialData: [
-      Article(id: 'article1', title: 'First Article', content: 'Hello world!'),
-    ],
-  );
-
-  // 4. Use the client
-  try {
-    // Create a new article
-    final newArticle = Article(id: 'article2', title: 'Second Article');
-    SuccessApiResponse<Article> createResponse =
-        await client.create(item: newArticle);
-    print('Created: ${createResponse.data.title}');
-
-    // Read an article
-    SuccessApiResponse<Article> readResponse =
-        await client.read(id: 'article1');
-    print('Read: ${readResponse.data.title}');
-
-    // Query articles with a search term and other filters
-    final filter = {
-      'q': 'article', // Search for 'article' in title
-      'content': {'\$ne': null} // And content is not null
-    };
-    final sort = [const SortOption('title', SortOrder.desc)];
-    final pagination = const PaginationOptions(limit: 5);
-
-    final queryResponse = await client.readAll(
-      filter: filter,
-      sort: sort,
-      pagination: pagination,
-    );
-
-    print('Found ${queryResponse.data.items.length} sorted articles matching query:');
-    for (final article in queryResponse.data.items) {
-      print('- ${article.title}');
-    }
-    print('Has more pages: ${queryResponse.data.hasMore}');
-
-    // Count published articles
-    final countResponse = await client.count(filter: {'isPublished': true});
-    print('Number of published articles: ${countResponse.data}');
-
-    // Run an aggregation pipeline to get article count per category
-    final aggregateResponse = await client.aggregate(
-      pipeline: [
-        {
-          r'$group': {
-            '_id': r'$category.name',
-            'count': {r'$sum': 1},
-          },
-        },
-        {
-          r'$sort': {'count': -1},
-        },
-      ],
-    );
-    print('Article count per category:');
-    for (final result in aggregateResponse.data) {
-      print('- ${result['_id']}: ${result['count']}');
-    }
-
-  } on HtHttpException catch (e) {
-    print('An error occurred: ${e.message}');
-  }
-}
-```
+</details>
 
 ## 🔑 Licensing
 
-This package is source-available and licensed under the [PolyForm Free Trial 1.0.0](LICENSE). Please review the terms before use.
-
-For commercial licensing options that grant the right to build and distribute unlimited applications, please visit the main [**Flutter News App - Full Source Code Toolkit**](https://github.com/flutter-news-app-full-source-code) organization.
+This `data_inmemory` package is an integral part of the [**Flutter News App Full Source Code Toolkit**](https://github.com/flutter-news-app-full-source-code). For comprehensive details regarding licensing, including trial and commercial options for the entire toolkit, please refer to the main toolkit organization page.
