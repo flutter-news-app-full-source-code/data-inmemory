@@ -35,24 +35,24 @@ class Article extends Equatable {
   final DateTime? publishedAt;
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'category': category.toJson(),
-        'isPublished': isPublished,
-        'rating': rating,
-        'publishedAt': publishedAt?.toIso8601String(),
-        'type': 'headline', // Add type for search query simulation
-      };
+    'id': id,
+    'title': title,
+    'category': category.toJson(),
+    'isPublished': isPublished,
+    'rating': rating,
+    'publishedAt': publishedAt?.toIso8601String(),
+    'type': 'headline', // Add type for search query simulation
+  };
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        category,
-        isPublished,
-        rating,
-        publishedAt,
-      ];
+    id,
+    title,
+    category,
+    isPublished,
+    rating,
+    publishedAt,
+  ];
 }
 
 List<Article> createTestArticles(int count) {
