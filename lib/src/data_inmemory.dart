@@ -19,17 +19,11 @@ import 'package:logging/logging.dart';
 ///
 /// **Querying (`readAll`):**
 /// - **General Filtering:** Supports filtering on any property in the item's
-///   JSON representation, including nested properties using dot-notation
-///   (e.g., `'category.id'`). It supports operators like `$in`, `$ne`, `$gte`, etc.
-/// - **Special Search Query (`q`):** To simulate a full-text search, the
-///   `filter` map accepts a special key: `'q'`.
-///   - When `filter: {'q': 'search term'}` is provided, the client performs a
-///     case-insensitive substring search.
-///   - The search is performed on the `title` field for `Headline` types, and
-///     on the `name` field for `Topic` and `Source` types.
-///   - The `q` key is processed separately and removed from the filter before
-///     other conditions are evaluated, allowing search and other filters to be
-///     combined.
+///   JSON representation. This includes nested properties using dot-notation
+///   (e.g., `'category.id'`). It supports a variety of operators for rich
+///   queries, such as `$in`, `$ne`, `$gte`, and `$regex` for text searching.
+/// - **Text Search:** To perform a case-insensitive text search, use the
+///   `$regex` operator (e.g., `{'name': {'$regex': 'term', '$options': 'i'}}`).
 /// {@endtemplate}
 class DataInMemory<T> implements DataClient<T> {
   /// {@macro data_inmemory}
@@ -38,9 +32,9 @@ class DataInMemory<T> implements DataClient<T> {
     required String Function(T item) getId,
     List<T>? initialData,
     Logger? logger,
-  }) : _toJson = toJson,
-       _getId = getId,
-       _logger = logger ?? Logger('DataInMemory<$T>') {
+  })  : _toJson = toJson,
+        _getId = getId,
+        _logger = logger ?? Logger('DataInMemory<$T>') {
     // Initialize global storage once
     _userScopedStorage.putIfAbsent(_globalDataKey, () => <String, T>{});
     _userScopedJsonStorage.putIfAbsent(
@@ -159,15 +153,11 @@ class DataInMemory<T> implements DataClient<T> {
 
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
-    final effectiveFilter = filter != null
-        ? Map<String, dynamic>.from(filter)
-        : null;
+    final effectiveFilter =
+        filter != null ? Map<String, dynamic>.from(filter) : null;
 
-    // Special handling for 'q' search parameter, which is removed from the
-    // main filter to be processed by a dedicated function.
-    final searchTerm = effectiveFilter?.remove('q') as String?;
     _logger.fine(
-      'ReadAll PARAMS: effectiveFilter="$effectiveFilter", searchTerm="$searchTerm"',
+      'ReadAll PARAMS: effectiveFilter="$effectiveFilter"',
     );
 
     // 1. Apply all filtering in a single pass.
@@ -178,18 +168,16 @@ class DataInMemory<T> implements DataClient<T> {
     final matchedJsonItems = allJsonItems.where((jsonItem) {
       final itemId = jsonItem['id'] as String?;
       final matches = _itemMatchesAllFilters(
-        jsonItem,
         effectiveFilter,
-        searchTerm,
+        jsonItem,
       );
       _logger.finer('ReadAll FILTERING: item id="$itemId", matches="$matches"');
       return matches;
     }).toList();
 
     // Get the original items from the matched JSON items.
-    final matchedIds = matchedJsonItems
-        .map((json) => json['id'] as String)
-        .toSet();
+    final matchedIds =
+        matchedJsonItems.map((json) => json['id'] as String).toSet();
     final allItems = userStorage.values
         .where((item) => matchedIds.contains(_getId(item)))
         .toList();
@@ -253,64 +241,15 @@ class DataInMemory<T> implements DataClient<T> {
     return true; // All conditions passed
   }
 
-  /// Checks if a given [jsonItem] matches the search query.
-  bool _matchesSearchQuery(Map<String, dynamic> jsonItem, String searchTerm) {
-    final itemId = jsonItem['id'] as String?;
-    if (searchTerm.isEmpty) {
-      _logger.finer('_matchesSearchQuery [id="$itemId"]: PASSED (empty term)');
-      return true;
-    }
-    final lowercasedSearchTerm = searchTerm.toLowerCase();
-
-    // Determine which field to search based on the item's 'type'
-    final type = jsonItem['type'] as String?;
-    String? fieldValue;
-
-    switch (type) {
-      case 'headline':
-        fieldValue = jsonItem['title'] as String?;
-      case 'topic':
-      case 'source':
-      case 'country':
-        fieldValue = jsonItem['name'] as String?;
-      default:
-        _logger.finer(
-          '_matchesSearchQuery [id="$itemId"]: FAILED (unknown type "$type")',
-        );
-        return false;
-    }
-
-    if (fieldValue != null) {
-      final match = fieldValue.toLowerCase().contains(lowercasedSearchTerm);
-      _logger.finer(
-        '_matchesSearchQuery [id="$itemId"]: field="$fieldValue", term="$searchTerm", match="$match"',
-      );
-      return match;
-    }
-
-    _logger.finer(
-      '_matchesSearchQuery [id="$itemId"]: FAILED (field value is null)',
-    );
-    return false;
-  }
-
   /// Checks if a given [jsonItem] matches all conditions in the [filter]
   /// and the [searchTerm].
   bool _itemMatchesAllFilters(
-    Map<String, dynamic> jsonItem,
     Map<String, dynamic>? filter,
-    String? searchTerm,
+    Map<String, dynamic> jsonItem,
   ) {
     // Apply property filtering first
     if (filter != null && filter.isNotEmpty) {
       if (!_matchesFilter(jsonItem, filter)) {
-        return false;
-      }
-    }
-
-    // Apply search term filtering
-    if (searchTerm != null && searchTerm.isNotEmpty) {
-      if (!_matchesSearchQuery(jsonItem, searchTerm)) {
         return false;
       }
     }
@@ -328,16 +267,14 @@ class DataInMemory<T> implements DataClient<T> {
         case r'$in':
           if (operatorValue is! List) return false;
           if (itemValue == null) return false;
-          final lowercasedList = operatorValue
-              .map((e) => e.toString().toLowerCase())
-              .toList();
+          final lowercasedList =
+              operatorValue.map((e) => e.toString().toLowerCase()).toList();
           return lowercasedList.contains(itemValue.toString().toLowerCase());
         case r'$nin': // not in
           if (operatorValue is! List) return false;
           if (itemValue == null) return true;
-          final lowercasedList = operatorValue
-              .map((e) => e.toString().toLowerCase())
-              .toList();
+          final lowercasedList =
+              operatorValue.map((e) => e.toString().toLowerCase()).toList();
           return !lowercasedList.contains(itemValue.toString().toLowerCase());
         case r'$ne': // not equal
           return itemValue?.toString() != operatorValue?.toString();
@@ -351,6 +288,23 @@ class DataInMemory<T> implements DataClient<T> {
                 (operator == r'$lt' && cmp < 0);
           }
           return false; // Cannot compare non-comparable types
+        case r'$regex':
+          _logger.finest('Evaluating $operator operator.');
+          if (itemValue is! String) {
+            _logger
+                .finest('Regex match failed: itemValue is not a String.');
+            return false;
+          }
+          if (operatorValue is! String) {
+            _logger
+                .finest('Regex match failed: operatorValue is not a String.');
+            return false;
+          }
+          final options = operatorMap[r'$options'] as String?;
+          final isCaseInsensitive = options?.contains('i') ?? false;
+          final regex =
+              RegExp(operatorValue, caseSensitive: !isCaseInsensitive);
+          return regex.hasMatch(itemValue);
       }
     }
     return true; // Default to true if no known operators are found
@@ -391,8 +345,8 @@ class DataInMemory<T> implements DataClient<T> {
           compareResult = valueA.compareTo(valueB);
         } else {
           compareResult = valueA.toString().toLowerCase().compareTo(
-            valueB.toString().toLowerCase(),
-          );
+                valueB.toString().toLowerCase(),
+              );
         }
 
         if (compareResult != 0) {
@@ -430,9 +384,8 @@ class DataInMemory<T> implements DataClient<T> {
     final pageItems = allMatchingItems.sublist(startIndex, endIndex);
 
     final hasMore = endIndex < allMatchingItems.length;
-    final cursor = (pageItems.isNotEmpty && hasMore)
-        ? _getId(pageItems.last)
-        : null;
+    final cursor =
+        (pageItems.isNotEmpty && hasMore) ? _getId(pageItems.last) : null;
 
     return PaginatedResponse(
       items: pageItems,
@@ -514,9 +467,8 @@ class DataInMemory<T> implements DataClient<T> {
     var allItems = userJsonStorage.values.toList();
 
     if (filter != null && filter.isNotEmpty) {
-      allItems = allItems
-          .where((item) => _matchesFilter(item, filter))
-          .toList();
+      allItems =
+          allItems.where((item) => _matchesFilter(item, filter)).toList();
     }
 
     _logger.info('COUNT SUCCESS: scope="$scope", count=${allItems.length}');
@@ -597,7 +549,8 @@ class DataInMemory<T> implements DataClient<T> {
     for (final item in input) {
       // Remove '$' prefix from field path
       final idValue = _getNestedValue(item, idExpression.substring(1));
-      final group = groupedResults.putIfAbsent(idValue, () => {'_id': idValue});
+      final group =
+          groupedResults.putIfAbsent(idValue, () => {'_id': idValue});
 
       // Process accumulators
       for (final entry in groupSpec.entries) {
