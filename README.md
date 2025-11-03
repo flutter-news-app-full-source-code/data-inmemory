@@ -27,7 +27,7 @@ This package offers a comprehensive set of features for managing data entities i
 - **CRUD Operations:** Implements `create`, `read`, `update`, and `delete` methods for standard data manipulation.
 - **User-Scoped & Global Data:** Supports operations tied to a specific `userId` for user-scoped data, as well as operations targeting global data not associated with any user.
 - **Rich Document-Style Querying:** The `readAll` method supports advanced filtering with operators like `$in`, `$nin`, `$ne`, `$gte` on any field (including nested ones), multi-field sorting via `SortOption` objects, and cursor-based pagination via `PaginationOptions`.
-- **Simulated Full-Text Search:** Accepts a special `q` key in the filter (`{'q': 'search term'}`) to perform a case-insensitive substring search on designated primary text fields of a model (e.g., `title` for headlines, `name` for topics/sources).
+- **Generic Text Search:** Supports the `$regex` operator for powerful, case-insensitive text searches on any string field (e.g., `{'name': {'$regex': 'term', '$options': 'i'}}`).
 - **Efficient Counting & Aggregation:** Includes a `count` method for efficient document counting and an `aggregate` method to simulate basic MongoDB aggregation pipelines (supporting `$match`, `$group`, `$sort`, `$limit`), enabling testing of analytics-style queries.
 
 ### 🛡️ Standardized Error Handling
