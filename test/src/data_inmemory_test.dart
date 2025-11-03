@@ -584,23 +584,30 @@ void main() {
           },
         );
 
-        test('should filter using the special "q" search parameter', () async {
-          // Arrange
-          final filter = {'q': 'Article 1'}; // Matches 'Article 1'
-
-          // Act
-          final response = await clientWithData.readAll(filter: filter);
-
-          // Assert
-          expect(response.data.items.length, 1);
-          expect(response.data.items.first.title, 'Article 1');
-        });
-
         test(
-          'should correctly perform case-insensitive partial search with "q"',
+          r'should filter using the "$regex" operator for text search',
           () async {
             // Arrange
-            final filter = {'q': 'rticle 2'}; // Matches 'Article 2'
+            final filter = {
+              'title': {r'$regex': 'Article 1', r'$options': 'i'},
+            }; // Matches 'Article 1'
+
+            // Act
+            final response = await clientWithData.readAll(filter: filter);
+
+            // Assert
+            expect(response.data.items.length, 1);
+            expect(response.data.items.first.title, 'Article 1');
+          },
+        );
+
+        test(
+          r'should correctly perform case-insensitive partial search with "$regex"',
+          () async {
+            // Arrange
+            final filter = {
+              'title': {r'$regex': 'rticle 2', r'$options': 'i'},
+            }; // Matches 'Article 2'
 
             // Act
             final response = await clientWithData.readAll(filter: filter);
@@ -612,10 +619,12 @@ void main() {
         );
 
         test(
-          'should return no results for a non-matching "q" search',
+          r'should return no results for a non-matching "$regex" search',
           () async {
             // Arrange
-            final filter = {'q': 'NonExistent'};
+            final filter = {
+              'title': {r'$regex': 'NonExistent', r'$options': 'i'},
+            };
 
             // Act
             final response = await clientWithData.readAll(filter: filter);
@@ -625,9 +634,12 @@ void main() {
           },
         );
 
-        test('should combine "q" search with other filters', () async {
+        test(r'should combine "$regex" search with other filters', () async {
           // Arrange: Search for 'Article' (matches all) but only published
-          final filter = {'q': 'Article', 'isPublished': true};
+          final filter = {
+            'title': {r'$regex': 'Article', r'$options': 'i'},
+            'isPublished': true,
+          };
 
           // Act
           final response = await clientWithData.readAll(filter: filter);
