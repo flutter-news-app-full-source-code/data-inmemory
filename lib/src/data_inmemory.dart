@@ -301,11 +301,18 @@ class DataInMemory<T> implements DataClient<T> {
           }
           final options = operatorMap[r'$options'] as String?;
           final isCaseInsensitive = options?.contains('i') ?? false;
-          final regex = RegExp(
-            operatorValue,
-            caseSensitive: !isCaseInsensitive,
-          );
-          return regex.hasMatch(itemValue);
+          try {
+            final regex = RegExp(
+              operatorValue,
+              caseSensitive: !isCaseInsensitive,
+            );
+            return regex.hasMatch(itemValue);
+          } on FormatException catch (e) {
+            _logger.warning(
+              'Invalid regex pattern: "$operatorValue". Error: $e',
+            );
+            return false;
+          }
       }
     }
     return true; // Default to true if no known operators are found
