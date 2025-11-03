@@ -32,9 +32,9 @@ class DataInMemory<T> implements DataClient<T> {
     required String Function(T item) getId,
     List<T>? initialData,
     Logger? logger,
-  })  : _toJson = toJson,
-        _getId = getId,
-        _logger = logger ?? Logger('DataInMemory<$T>') {
+  }) : _toJson = toJson,
+       _getId = getId,
+       _logger = logger ?? Logger('DataInMemory<$T>') {
     // Initialize global storage once
     _userScopedStorage.putIfAbsent(_globalDataKey, () => <String, T>{});
     _userScopedJsonStorage.putIfAbsent(
@@ -153,12 +153,11 @@ class DataInMemory<T> implements DataClient<T> {
 
     final userStorage = _getStorageForUser(userId);
     final userJsonStorage = _getJsonStorageForUser(userId);
-    final effectiveFilter =
-        filter != null ? Map<String, dynamic>.from(filter) : null;
+    final effectiveFilter = filter != null
+        ? Map<String, dynamic>.from(filter)
+        : null;
 
-    _logger.fine(
-      'ReadAll PARAMS: effectiveFilter="$effectiveFilter"',
-    );
+    _logger.fine('ReadAll PARAMS: effectiveFilter="$effectiveFilter"');
 
     // 1. Apply all filtering in a single pass.
     // This is more efficient and ensures consistent behavior.
@@ -167,17 +166,15 @@ class DataInMemory<T> implements DataClient<T> {
 
     final matchedJsonItems = allJsonItems.where((jsonItem) {
       final itemId = jsonItem['id'] as String?;
-      final matches = _itemMatchesAllFilters(
-        effectiveFilter,
-        jsonItem,
-      );
+      final matches = _itemMatchesAllFilters(effectiveFilter, jsonItem);
       _logger.finer('ReadAll FILTERING: item id="$itemId", matches="$matches"');
       return matches;
     }).toList();
 
     // Get the original items from the matched JSON items.
-    final matchedIds =
-        matchedJsonItems.map((json) => json['id'] as String).toSet();
+    final matchedIds = matchedJsonItems
+        .map((json) => json['id'] as String)
+        .toSet();
     final allItems = userStorage.values
         .where((item) => matchedIds.contains(_getId(item)))
         .toList();
@@ -242,7 +239,7 @@ class DataInMemory<T> implements DataClient<T> {
   }
 
   /// Checks if a given [jsonItem] matches all conditions in the [filter]
-  /// and the [searchTerm].
+  /// and the searchTerm.
   bool _itemMatchesAllFilters(
     Map<String, dynamic>? filter,
     Map<String, dynamic> jsonItem,
@@ -267,14 +264,16 @@ class DataInMemory<T> implements DataClient<T> {
         case r'$in':
           if (operatorValue is! List) return false;
           if (itemValue == null) return false;
-          final lowercasedList =
-              operatorValue.map((e) => e.toString().toLowerCase()).toList();
+          final lowercasedList = operatorValue
+              .map((e) => e.toString().toLowerCase())
+              .toList();
           return lowercasedList.contains(itemValue.toString().toLowerCase());
         case r'$nin': // not in
           if (operatorValue is! List) return false;
           if (itemValue == null) return true;
-          final lowercasedList =
-              operatorValue.map((e) => e.toString().toLowerCase()).toList();
+          final lowercasedList = operatorValue
+              .map((e) => e.toString().toLowerCase())
+              .toList();
           return !lowercasedList.contains(itemValue.toString().toLowerCase());
         case r'$ne': // not equal
           return itemValue?.toString() != operatorValue?.toString();
@@ -291,19 +290,21 @@ class DataInMemory<T> implements DataClient<T> {
         case r'$regex':
           _logger.finest('Evaluating $operator operator.');
           if (itemValue is! String) {
-            _logger
-                .finest('Regex match failed: itemValue is not a String.');
+            _logger.finest('Regex match failed: itemValue is not a String.');
             return false;
           }
           if (operatorValue is! String) {
-            _logger
-                .finest('Regex match failed: operatorValue is not a String.');
+            _logger.finest(
+              'Regex match failed: operatorValue is not a String.',
+            );
             return false;
           }
           final options = operatorMap[r'$options'] as String?;
           final isCaseInsensitive = options?.contains('i') ?? false;
-          final regex =
-              RegExp(operatorValue, caseSensitive: !isCaseInsensitive);
+          final regex = RegExp(
+            operatorValue,
+            caseSensitive: !isCaseInsensitive,
+          );
           return regex.hasMatch(itemValue);
       }
     }
@@ -345,8 +346,8 @@ class DataInMemory<T> implements DataClient<T> {
           compareResult = valueA.compareTo(valueB);
         } else {
           compareResult = valueA.toString().toLowerCase().compareTo(
-                valueB.toString().toLowerCase(),
-              );
+            valueB.toString().toLowerCase(),
+          );
         }
 
         if (compareResult != 0) {
@@ -384,8 +385,9 @@ class DataInMemory<T> implements DataClient<T> {
     final pageItems = allMatchingItems.sublist(startIndex, endIndex);
 
     final hasMore = endIndex < allMatchingItems.length;
-    final cursor =
-        (pageItems.isNotEmpty && hasMore) ? _getId(pageItems.last) : null;
+    final cursor = (pageItems.isNotEmpty && hasMore)
+        ? _getId(pageItems.last)
+        : null;
 
     return PaginatedResponse(
       items: pageItems,
@@ -467,8 +469,9 @@ class DataInMemory<T> implements DataClient<T> {
     var allItems = userJsonStorage.values.toList();
 
     if (filter != null && filter.isNotEmpty) {
-      allItems =
-          allItems.where((item) => _matchesFilter(item, filter)).toList();
+      allItems = allItems
+          .where((item) => _matchesFilter(item, filter))
+          .toList();
     }
 
     _logger.info('COUNT SUCCESS: scope="$scope", count=${allItems.length}');
@@ -549,8 +552,7 @@ class DataInMemory<T> implements DataClient<T> {
     for (final item in input) {
       // Remove '$' prefix from field path
       final idValue = _getNestedValue(item, idExpression.substring(1));
-      final group =
-          groupedResults.putIfAbsent(idValue, () => {'_id': idValue});
+      final group = groupedResults.putIfAbsent(idValue, () => {'_id': idValue});
 
       // Process accumulators
       for (final entry in groupSpec.entries) {
